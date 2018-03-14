@@ -31,3 +31,8 @@ sepa.subscribe("select * where{?sub ?obj ?pred}",{
   {host:"www.vaimee.com"})
 }
 ```
+
+```javascript
+sepa.update("insert {<hello> <from> 'js'}where{}", {host:"www.vaimee.com"})
+    .then(()=>{console.log("Updated");})
+```
