@@ -1,0 +1,26 @@
+{
+  "name": "SEPA-js",
+  "version": "0.0.1",
+  "description": "A client library for Semantic Event Processing Architecture",
+  "main": "index.js",
+  "scripts": {
+    "deploy" : "browserify index.js --standalone Sepajs > web/sepa.js",
+    "test": "mocha"
+  },
+  "keywords": [
+    "semantic",
+    "linked-data"
+  ],
+  "author": "Cristiano Aguzzi",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^0.18.0",
+    "isomorphic-ws": "^4.0.0",
+    "ws": "^5.0.0",
+    "zen-observable": "^0.8.6"
+  },
+  "devDependencies": {
+    "browserify": "^16.1.1",
+    "mocha": "^5.0.4"
+  }
+}
