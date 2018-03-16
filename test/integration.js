@@ -11,7 +11,17 @@ describe('Integration tests for api', function() {
        },
        {host:config_host})
     });
-
+    it('test subscription should give error', function(done) {
+       let sub = sepa.subscribe("selectfa ?a where {<integration> <tests> ?a}",{
+         next(val) {
+           sub.unsubscribe();
+           assert.ok(false,"This subscription should fail!")},
+         error(err)  {
+           done()
+         }
+       },
+       {host:config_host})
+    });
     it('test notification with update', function(done) {
       sepa.update("delete{<integration> <tests> ?a}where{<integration> <tests> ?a}",
         {host:config_host}).then(
