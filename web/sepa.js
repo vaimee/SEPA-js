@@ -83,7 +83,10 @@ class SEPA {
       const ws = new WebSocket(sub_uri);
 
       ws.addEventListener("open",  () => {
-        var subscribe = { "subscribe" : query}
+        var subscribe = { "subscribe" : {
+            sparql : query
+        }
+      }
         ws.send(JSON.stringify(subscribe))
       });
 
@@ -93,18 +96,17 @@ class SEPA {
           data = JSON.parse(data.data)
           data ["toString"] = () => { return JSON.stringify(data) }
 
-          if(data.code === undefined){
-            if(data.subscribed !== undefined){
-              subid = data.subscribed
+          if(!data.error){
+            if(data.subscribed){
+              subid = data.subscribed.spuid
             }
 
-            if( data.unsubscribed !== undefined){
+            if( data.unsubscribed){
               obs.complete()
               ws.close()
             }else {
               obs.next(data)
             }
-
           }else{
             obs.error(data)
           }
@@ -119,7 +121,7 @@ class SEPA {
       });
 
       return () => {
-        let unsubscribe = { unsubscribe : subid}
+        let unsubscribe = { unsubscribe : { spuid : subid }}
         ws.send(JSON.stringify(unsubscribe))
       };
     });
