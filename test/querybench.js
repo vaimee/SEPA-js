@@ -32,6 +32,6 @@ describe('querybench', function() {
     query = bench.sparql("select * where{?a ?b ?c}",{a:{
       value :"hello"
     }})
-    assert.equal("PREFIX test:hello PREFIX pippo:world select * where{?a ?b ?c}",query )
+    assert.equal("PREFIX test:hello PREFIX pippo:world select * where{hello ?b ?c}",query )
   });
 })
