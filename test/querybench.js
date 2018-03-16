@@ -34,4 +34,30 @@ describe('querybench', function() {
     }})
     assert.equal("PREFIX test:hello PREFIX pippo:world select * where{hello ?b ?c}",query )
   });
+
+  it('test bindings literal', function() {
+    namespaces = {
+      test : "hello",
+      pippo : "world"
+    }
+    bench = new Bench(namespaces)
+    query = bench.sparql("select * where{?a ?b ?c}",{a:{
+      type : "literal",
+      value :"hello"
+    }})
+    assert.equal("PREFIX test:hello PREFIX pippo:world select * where{'hello' ?b ?c}",query )
+  });
+
+  it('test bindings uri', function() {
+    namespaces = {
+      test : "hello",
+      pippo : "world"
+    }
+    bench = new Bench(namespaces)
+    query = bench.sparql("select * where{?a ?b ?c}",{a:{
+      type : "uri",
+      value :"hello"
+    }})
+    assert.equal("PREFIX test:hello PREFIX pippo:world select * where{<hello> ?b ?c}",query )
+  });
 })
