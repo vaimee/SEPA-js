@@ -34,6 +34,17 @@ describe('querybench', function() {
     }})
     assert.equal("PREFIX test:hello PREFIX pippo:world select * where{hello ?b ?c}",query )
   });
+  it('test initializated namespaces with query and bindgs with more occurences', function() {
+    namespaces = {
+      test : "hello",
+      pippo : "world"
+    }
+    bench = new Bench(namespaces)
+    query = bench.sparql("select * where{?a ?b ?c. ?a ?d ?f}",{a:{
+      value :"hello"
+    }})
+    assert.equal("PREFIX test:hello PREFIX pippo:world select * where{hello ?b ?c. hello ?d ?f}",query )
+  });
 
   it('test bindings literal', function() {
     namespaces = {
