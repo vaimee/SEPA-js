@@ -1,5 +1,5 @@
 const assert = require('assert');
-const sepa = require('../lib/core')
+const sepa = require('../../lib/core')
 var config_host = "mml.arces.unibo.it"
 
 describe('Integration tests for api', function() {

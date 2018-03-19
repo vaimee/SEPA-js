@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "deploy": "browserify index.js --standalone Sepajs -o ./web/sepa.js",
-    "test": "mocha"
+    "test": "mocha",
+    "integration-test" : "mocha test/integration/*.js"
   },
   "keywords": [
     "semantic",
