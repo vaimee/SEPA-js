@@ -6,7 +6,8 @@ describe('Integration tests for api', function() {
     it('test subscription', function(done) {
        let sub = sepa.subscribe("select ?a where {<integration> <tests> ?a}",data => {
           sub.unsubscribe()
-          assert.ok(data.subscribed)
+          assert.ok(data.notification)
+          assert.equal(data.notification.sequence,0)
           done()
        },
        {host:config_host})
