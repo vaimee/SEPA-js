@@ -4,10 +4,14 @@ module.exports = require('./lib/core');
 },{"./lib/core":2}],2:[function(require,module,exports){
 const defaults = require('./defaults');
 const SEPA = require('./sepa');
+const jsap = require('./jsap');
 
-module.exports = new SEPA(defaults)
+module.exports = {
+  client : new SEPA(defaults),
+  Jsap : jsap
+}
 
-},{"./defaults":3,"./sepa":4}],3:[function(require,module,exports){
+},{"./defaults":3,"./jsap":4,"./sepa":6}],3:[function(require,module,exports){
 module.exports = {
 		"host" : "localhost" ,
 		"ports" : {
@@ -26,6 +30,143 @@ module.exports = {
 }
 
 },{}],4:[function(require,module,exports){
+const SEPA = require('./sepa');
+const Bench = require('./querybench');
+const defaults = require('./defaults');
+
+function trasformBindings(bindings = {},forcedBindings={}) {
+  let result = {}
+  Object.keys(bindings).forEach(k => {
+    result[k] = {
+      value : bindings[k],
+      type : forcedBindings[k] ? forcedBindings[k].type : "literal"
+    }
+  })
+  result = Object.assign(forcedBindings,result)
+  return result
+}
+
+class Jsap {
+  constructor(config = {}) {
+    if (typeof config === 'string') {
+      config = JSON.parse(config)
+    }
+    let parameters = Object.assign(defaults,config.parameters)
+    this.updates = {}
+    this.queries = {}
+    Object.assign(this,config)
+    this.parameters = parameters
+    this.api   = new SEPA(this.parameters)
+    this.bench = new Bench(this.namespaces)
+
+    Object.keys(this.updates).forEach(k =>{
+      this[k] = binds => {
+        return this.update(k,binds)
+      }
+    })
+    Object.keys(this.queries).forEach(k =>{
+      if(this[k]){
+        delete(this[k])
+      }else{
+        this[k] = (binds,handler) => {
+         return this.subscribe(k,binds,handler)
+      }
+      }
+    })
+  }
+
+  subscribe(key,bindings,handler){
+    let query = this.queries[key].sparql
+    let binds = trasformBindings(bindings,this.queries[key].forcedBindings)
+    let forcedBindings = this.queries[key].forcedBindings ? this.queries[key].forcedBindings : {}
+    binds = Object.assign(forcedBindings,binds)
+    query = this.bench.sparql(query,binds)
+    return this.api.subscribe(query,handler)
+  }
+
+  update(key,bindings){
+    let update = this.updates[key].sparql
+    let binds = trasformBindings(bindings,this.updates[key].forcedBindings)
+    let forcedBindings = this.updates[key].forcedBindings ? this.updates[key].forcedBindings : {}
+    binds = Object.assign(forcedBindings,binds)
+    update = this.bench.sparql(update,binds)
+    return this.api.update(update);
+  }
+
+  producer(key){
+    return binds => { this.update(key,binds)}
+  }
+
+  consumer(key,handler){
+    return binds => { this.subscribe(key,binds,handler)}
+  }
+
+  get Producers(){
+    let result = {}
+    Object.keys(this.updates).forEach(k =>{
+      result[k] = binds => {
+        return this.update(k,binds)
+      }
+    })
+    return result;
+  }
+
+  get Consumers(){
+    let result = {}
+    Object.keys(this.queries).forEach(k =>{
+      result[k] = (binds,handler) => { return this.subscribe(k,binds,handler)}
+    })
+    return result;
+  }
+}
+module.exports = Jsap;
+
+},{"./defaults":3,"./querybench":5,"./sepa":6}],5:[function(require,module,exports){
+class SPARQLbench {
+
+  constructor(namespaces = {}){
+    this.namespaces = namespaces
+  }
+
+  addNameSpace(prefix,ns){
+    this.namespaces[prefix] = ns
+  }
+
+  removeNameSpace(prefix){
+    this.namespaces.delete(prefix)
+  }
+
+  sparql(template,bindings){
+    let prefixes = []
+    Object.keys (this.namespaces). forEach (k => {
+      let pref = `PREFIX ${k}:<${this.namespaces[k]}>`
+      prefixes.push(pref)
+    });
+    prefixes = prefixes.join(" ")
+    Object.keys(bindings).forEach(k =>{
+      let search = new RegExp("\\?"+k,'g')
+      switch (bindings[k].type) {
+        case "uri":
+          template = template.replace(search,"<"+bindings[k].value+">")
+          break;
+        case "literal":
+          if (typeof bindings[k].value === "string") {
+            template = template.replace(search,"'"+bindings[k].value+"'")
+          }else{
+            template = template.replace(search,bindings[k].value)
+          }
+          break;
+        default:
+          template = template.replace(search,bindings[k].value)
+      }
+    })
+    return (prefixes+" "+template).trim()
+  }
+}
+
+module.exports = SPARQLbench;
+
+},{}],6:[function(require,module,exports){
 const axios = require('axios');
 const WebSocket = require('isomorphic-ws');
 const utils = require('./utils');
@@ -91,6 +232,8 @@ class SEPA {
       });
 
       var subid = ""
+      var connectionClosed = false
+
       ws.addEventListener("message", data => {
         try{
           data = JSON.parse(data.data)
@@ -108,21 +251,28 @@ class SEPA {
               obs.next(data)
             }
           }else{
+            connectionClosed = true
+            ws.close()
             obs.error(data)
           }
 
         }catch(e){
+          connectionClosed = true
+          ws.close()
           obs.error(e)
         }
       });
 
       ws.addEventListener("close", function () {
+        connectionClosed = true
         obs.complete()
       });
 
       return () => {
-        let unsubscribe = { unsubscribe : { spuid : subid }}
-        ws.send(JSON.stringify(unsubscribe))
+        if (!connectionClosed) {
+          let unsubscribe = { unsubscribe : { spuid : subid }}
+          ws.send(JSON.stringify(unsubscribe))
+        }
       };
     });
     return observable.subscribe(observer)
@@ -131,7 +281,7 @@ class SEPA {
 
 module.exports = SEPA;
 
-},{"./utils":5,"axios":6,"isomorphic-ws":32,"zen-observable":43}],5:[function(require,module,exports){
+},{"./utils":7,"axios":8,"isomorphic-ws":34,"zen-observable":45}],7:[function(require,module,exports){
 const { Url } = require('url');
 const util = require('util');
 
@@ -161,9 +311,9 @@ module.exports.createURI = function (protocol,base,port,path) {
   return url
 };
 
-},{"url":38,"util":42}],6:[function(require,module,exports){
+},{"url":40,"util":44}],8:[function(require,module,exports){
 module.exports = require('./lib/axios');
-},{"./lib/axios":8}],7:[function(require,module,exports){
+},{"./lib/axios":10}],9:[function(require,module,exports){
 (function (process){
 'use strict';
 
@@ -347,7 +497,7 @@ module.exports = function xhrAdapter(config) {
 };
 
 }).call(this,require('_process'))
-},{"../core/createError":14,"./../core/settle":17,"./../helpers/btoa":21,"./../helpers/buildURL":22,"./../helpers/cookies":24,"./../helpers/isURLSameOrigin":26,"./../helpers/parseHeaders":28,"./../utils":30,"_process":33}],8:[function(require,module,exports){
+},{"../core/createError":16,"./../core/settle":19,"./../helpers/btoa":23,"./../helpers/buildURL":24,"./../helpers/cookies":26,"./../helpers/isURLSameOrigin":28,"./../helpers/parseHeaders":30,"./../utils":32,"_process":35}],10:[function(require,module,exports){
 'use strict';
 
 var utils = require('./utils');
@@ -401,7 +551,7 @@ module.exports = axios;
 // Allow use of default import syntax in TypeScript
 module.exports.default = axios;
 
-},{"./cancel/Cancel":9,"./cancel/CancelToken":10,"./cancel/isCancel":11,"./core/Axios":12,"./defaults":19,"./helpers/bind":20,"./helpers/spread":29,"./utils":30}],9:[function(require,module,exports){
+},{"./cancel/Cancel":11,"./cancel/CancelToken":12,"./cancel/isCancel":13,"./core/Axios":14,"./defaults":21,"./helpers/bind":22,"./helpers/spread":31,"./utils":32}],11:[function(require,module,exports){
 'use strict';
 
 /**
@@ -422,7 +572,7 @@ Cancel.prototype.__CANCEL__ = true;
 
 module.exports = Cancel;
 
-},{}],10:[function(require,module,exports){
+},{}],12:[function(require,module,exports){
 'use strict';
 
 var Cancel = require('./Cancel');
@@ -481,14 +631,14 @@ CancelToken.source = function source() {
 
 module.exports = CancelToken;
 
-},{"./Cancel":9}],11:[function(require,module,exports){
+},{"./Cancel":11}],13:[function(require,module,exports){
 'use strict';
 
 module.exports = function isCancel(value) {
   return !!(value && value.__CANCEL__);
 };
 
-},{}],12:[function(require,module,exports){
+},{}],14:[function(require,module,exports){
 'use strict';
 
 var defaults = require('./../defaults');
@@ -569,7 +719,7 @@ utils.forEach(['post', 'put', 'patch'], function forEachMethodWithData(method) {
 
 module.exports = Axios;
 
-},{"./../defaults":19,"./../utils":30,"./InterceptorManager":13,"./dispatchRequest":15}],13:[function(require,module,exports){
+},{"./../defaults":21,"./../utils":32,"./InterceptorManager":15,"./dispatchRequest":17}],15:[function(require,module,exports){
 'use strict';
 
 var utils = require('./../utils');
@@ -623,7 +773,7 @@ InterceptorManager.prototype.forEach = function forEach(fn) {
 
 module.exports = InterceptorManager;
 
-},{"./../utils":30}],14:[function(require,module,exports){
+},{"./../utils":32}],16:[function(require,module,exports){
 'use strict';
 
 var enhanceError = require('./enhanceError');
@@ -643,7 +793,7 @@ module.exports = function createError(message, config, code, request, response) 
   return enhanceError(error, config, code, request, response);
 };
 
-},{"./enhanceError":16}],15:[function(require,module,exports){
+},{"./enhanceError":18}],17:[function(require,module,exports){
 'use strict';
 
 var utils = require('./../utils');
@@ -731,7 +881,7 @@ module.exports = function dispatchRequest(config) {
   });
 };
 
-},{"../cancel/isCancel":11,"../defaults":19,"./../helpers/combineURLs":23,"./../helpers/isAbsoluteURL":25,"./../utils":30,"./transformData":18}],16:[function(require,module,exports){
+},{"../cancel/isCancel":13,"../defaults":21,"./../helpers/combineURLs":25,"./../helpers/isAbsoluteURL":27,"./../utils":32,"./transformData":20}],18:[function(require,module,exports){
 'use strict';
 
 /**
@@ -754,7 +904,7 @@ module.exports = function enhanceError(error, config, code, request, response) {
   return error;
 };
 
-},{}],17:[function(require,module,exports){
+},{}],19:[function(require,module,exports){
 'use strict';
 
 var createError = require('./createError');
@@ -782,7 +932,7 @@ module.exports = function settle(resolve, reject, response) {
   }
 };
 
-},{"./createError":14}],18:[function(require,module,exports){
+},{"./createError":16}],20:[function(require,module,exports){
 'use strict';
 
 var utils = require('./../utils');
@@ -804,7 +954,7 @@ module.exports = function transformData(data, headers, fns) {
   return data;
 };
 
-},{"./../utils":30}],19:[function(require,module,exports){
+},{"./../utils":32}],21:[function(require,module,exports){
 (function (process){
 'use strict';
 
@@ -904,7 +1054,7 @@ utils.forEach(['post', 'put', 'patch'], function forEachMethodWithData(method) {
 module.exports = defaults;
 
 }).call(this,require('_process'))
-},{"./adapters/http":7,"./adapters/xhr":7,"./helpers/normalizeHeaderName":27,"./utils":30,"_process":33}],20:[function(require,module,exports){
+},{"./adapters/http":9,"./adapters/xhr":9,"./helpers/normalizeHeaderName":29,"./utils":32,"_process":35}],22:[function(require,module,exports){
 'use strict';
 
 module.exports = function bind(fn, thisArg) {
@@ -917,7 +1067,7 @@ module.exports = function bind(fn, thisArg) {
   };
 };
 
-},{}],21:[function(require,module,exports){
+},{}],23:[function(require,module,exports){
 'use strict';
 
 // btoa polyfill for IE<10 courtesy https://github.com/davidchambers/Base64.js
@@ -955,7 +1105,7 @@ function btoa(input) {
 
 module.exports = btoa;
 
-},{}],22:[function(require,module,exports){
+},{}],24:[function(require,module,exports){
 'use strict';
 
 var utils = require('./../utils');
@@ -1023,7 +1173,7 @@ module.exports = function buildURL(url, params, paramsSerializer) {
   return url;
 };
 
-},{"./../utils":30}],23:[function(require,module,exports){
+},{"./../utils":32}],25:[function(require,module,exports){
 'use strict';
 
 /**
@@ -1039,7 +1189,7 @@ module.exports = function combineURLs(baseURL, relativeURL) {
     : baseURL;
 };
 
-},{}],24:[function(require,module,exports){
+},{}],26:[function(require,module,exports){
 'use strict';
 
 var utils = require('./../utils');
@@ -1094,7 +1244,7 @@ module.exports = (
   })()
 );
 
-},{"./../utils":30}],25:[function(require,module,exports){
+},{"./../utils":32}],27:[function(require,module,exports){
 'use strict';
 
 /**
@@ -1110,7 +1260,7 @@ module.exports = function isAbsoluteURL(url) {
   return /^([a-z][a-z\d\+\-\.]*:)?\/\//i.test(url);
 };
 
-},{}],26:[function(require,module,exports){
+},{}],28:[function(require,module,exports){
 'use strict';
 
 var utils = require('./../utils');
@@ -1180,7 +1330,7 @@ module.exports = (
   })()
 );
 
-},{"./../utils":30}],27:[function(require,module,exports){
+},{"./../utils":32}],29:[function(require,module,exports){
 'use strict';
 
 var utils = require('../utils');
@@ -1194,7 +1344,7 @@ module.exports = function normalizeHeaderName(headers, normalizedName) {
   });
 };
 
-},{"../utils":30}],28:[function(require,module,exports){
+},{"../utils":32}],30:[function(require,module,exports){
 'use strict';
 
 var utils = require('./../utils');
@@ -1249,7 +1399,7 @@ module.exports = function parseHeaders(headers) {
   return parsed;
 };
 
-},{"./../utils":30}],29:[function(require,module,exports){
+},{"./../utils":32}],31:[function(require,module,exports){
 'use strict';
 
 /**
@@ -1278,7 +1428,7 @@ module.exports = function spread(callback) {
   };
 };
 
-},{}],30:[function(require,module,exports){
+},{}],32:[function(require,module,exports){
 'use strict';
 
 var bind = require('./helpers/bind');
@@ -1583,7 +1733,7 @@ module.exports = {
   trim: trim
 };
 
-},{"./helpers/bind":20,"is-buffer":31}],31:[function(require,module,exports){
+},{"./helpers/bind":22,"is-buffer":33}],33:[function(require,module,exports){
 /*!
  * Determine if an object is a Buffer
  *
@@ -1606,11 +1756,11 @@ function isSlowBuffer (obj) {
   return typeof obj.readFloatLE === 'function' && typeof obj.slice === 'function' && isBuffer(obj.slice(0, 0))
 }
 
-},{}],32:[function(require,module,exports){
+},{}],34:[function(require,module,exports){
 (function (global){
 module.exports = global.WebSocket
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],33:[function(require,module,exports){
+},{}],35:[function(require,module,exports){
 // shim for using process in browser
 var process = module.exports = {};
 
@@ -1796,7 +1946,7 @@ process.chdir = function (dir) {
 };
 process.umask = function() { return 0; };
 
-},{}],34:[function(require,module,exports){
+},{}],36:[function(require,module,exports){
 (function (global){
 /*! https://mths.be/punycode v1.4.1 by @mathias */
 ;(function(root) {
@@ -2333,7 +2483,7 @@ process.umask = function() { return 0; };
 }(this));
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],35:[function(require,module,exports){
+},{}],37:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -2419,7 +2569,7 @@ var isArray = Array.isArray || function (xs) {
   return Object.prototype.toString.call(xs) === '[object Array]';
 };
 
-},{}],36:[function(require,module,exports){
+},{}],38:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -2506,13 +2656,13 @@ var objectKeys = Object.keys || function (obj) {
   return res;
 };
 
-},{}],37:[function(require,module,exports){
+},{}],39:[function(require,module,exports){
 'use strict';
 
 exports.decode = exports.parse = require('./decode');
 exports.encode = exports.stringify = require('./encode');
 
-},{"./decode":35,"./encode":36}],38:[function(require,module,exports){
+},{"./decode":37,"./encode":38}],40:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -3246,7 +3396,7 @@ Url.prototype.parseHost = function() {
   if (host) this.hostname = host;
 };
 
-},{"./util":39,"punycode":34,"querystring":37}],39:[function(require,module,exports){
+},{"./util":41,"punycode":36,"querystring":39}],41:[function(require,module,exports){
 'use strict';
 
 module.exports = {
@@ -3264,7 +3414,7 @@ module.exports = {
   }
 };
 
-},{}],40:[function(require,module,exports){
+},{}],42:[function(require,module,exports){
 if (typeof Object.create === 'function') {
   // implementation from standard node.js 'util' module
   module.exports = function inherits(ctor, superCtor) {
@@ -3289,14 +3439,14 @@ if (typeof Object.create === 'function') {
   }
 }
 
-},{}],41:[function(require,module,exports){
+},{}],43:[function(require,module,exports){
 module.exports = function isBuffer(arg) {
   return arg && typeof arg === 'object'
     && typeof arg.copy === 'function'
     && typeof arg.fill === 'function'
     && typeof arg.readUInt8 === 'function';
 }
-},{}],42:[function(require,module,exports){
+},{}],44:[function(require,module,exports){
 (function (process,global){
 // Copyright Joyent, Inc. and other Node contributors.
 //
@@ -3886,10 +4036,10 @@ function hasOwnProperty(obj, prop) {
 }
 
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./support/isBuffer":41,"_process":33,"inherits":40}],43:[function(require,module,exports){
+},{"./support/isBuffer":43,"_process":35,"inherits":42}],45:[function(require,module,exports){
 module.exports = require('./lib/Observable.js').Observable;
 
-},{"./lib/Observable.js":44}],44:[function(require,module,exports){
+},{"./lib/Observable.js":46}],46:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
