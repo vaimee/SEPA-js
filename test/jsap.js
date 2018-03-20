@@ -59,20 +59,20 @@ describe('Jsap', function() {
     });
     it("Check simple update",function () {
       jsap.api.update = (update) => {
-        assert.equal(update,"PREFIX rdf:http://www.w3.org/1999/02/22-rdf-syntax-ns# PREFIX rdfs:http://www.w3.org/1999/02/22-rdf-syntax-ns# INSERT { <hello> <from> <js> }WHERE{}")
+        assert.equal(update,"PREFIX rdf:<http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX rdfs:<http://www.w3.org/1999/02/22-rdf-syntax-ns#> INSERT { <hello> <from> <js> }WHERE{}")
       }
       jsap.update("simple")
     })
     it("Check update with defaults",function () {
       jsap.api.update = (update) => {
-        assert.equal(update,"PREFIX rdf:http://www.w3.org/1999/02/22-rdf-syntax-ns# PREFIX rdfs:http://www.w3.org/1999/02/22-rdf-syntax-ns# INSERT {<hello> <from> 'Italy'}WHERE{}")
+        assert.equal(update,"PREFIX rdf:<http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX rdfs:<http://www.w3.org/1999/02/22-rdf-syntax-ns#> INSERT {<hello> <from> 'Italy'}WHERE{}")
       }
       jsap.update("defaultArgs",{obj:"Italy"})
     })
 
 		it("Check update with defaults override",function () {
       jsap.api.update = (update) => {
-        assert.equal(update,"PREFIX rdf:http://www.w3.org/1999/02/22-rdf-syntax-ns# PREFIX rdfs:http://www.w3.org/1999/02/22-rdf-syntax-ns# INSERT {<Bye> <from> 'Italy'}WHERE{}")
+        assert.equal(update,"PREFIX rdf:<http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX rdfs:<http://www.w3.org/1999/02/22-rdf-syntax-ns#> INSERT {<Bye> <from> 'Italy'}WHERE{}")
       }
       jsap.update("defaultArgs",{obj:"Italy",sub:"Bye"})
     })
@@ -86,14 +86,14 @@ describe('Jsap', function() {
 
     it("Check simple subscribe",function () {
 			jsap.api.subscribe = (query) => {
-        assert.equal(query,"PREFIX rdf:http://www.w3.org/1999/02/22-rdf-syntax-ns# PREFIX rdfs:http://www.w3.org/1999/02/22-rdf-syntax-ns# select * where{?a ?b ?c}")
+        assert.equal(query,"PREFIX rdf:<http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX rdfs:<http://www.w3.org/1999/02/22-rdf-syntax-ns#> select * where{?a ?b ?c}")
       }
       jsap.subscribe("simple")
     })
 
     it("Check subscribe with defaults",function () {
       jsap.api.update = (update) => {
-        assert.equal(update,"PREFIX rdf:http://www.w3.org/1999/02/22-rdf-syntax-ns# PREFIX rdfs:http://www.w3.org/1999/02/22-rdf-syntax-ns# INSERT {<hello> <from> 'Italy'}WHERE{}")
+        assert.equal(update,"PREFIX rdf:<http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX rdfs:<http://www.w3.org/1999/02/22-rdf-syntax-ns#> INSERT {<hello> <from> 'Italy'}WHERE{}")
       }
       jsap.update("defaultArgs",{obj:"Italy"})
     })
@@ -106,19 +106,19 @@ describe('Jsap', function() {
     });
     it("call a producer",function () {
       jsap.api.update = (update) => {
-        assert.equal(update,"PREFIX rdf:http://www.w3.org/1999/02/22-rdf-syntax-ns# PREFIX rdfs:http://www.w3.org/1999/02/22-rdf-syntax-ns# INSERT { <hello> <from> <js> }WHERE{}")
+        assert.equal(update,"PREFIX rdf:<http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX rdfs:<http://www.w3.org/1999/02/22-rdf-syntax-ns#> INSERT { <hello> <from> <js> }WHERE{}")
       }
       jsap.producer("simple")()
     })
     it("call a prducer with bindings",function () {
       jsap.api.update = (update) => {
-        assert.equal(update,"PREFIX rdf:http://www.w3.org/1999/02/22-rdf-syntax-ns# PREFIX rdfs:http://www.w3.org/1999/02/22-rdf-syntax-ns# INSERT {<hello> <from> 'Italy'}WHERE{}")
+        assert.equal(update,"PREFIX rdf:<http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX rdfs:<http://www.w3.org/1999/02/22-rdf-syntax-ns#> INSERT {<hello> <from> 'Italy'}WHERE{}")
       }
       jsap.producer("defaultArgs")({obj:"Italy"})
     })
     it("call a prducer from producers ",function () {
       jsap.api.update = (update) => {
-        assert.equal(update,"PREFIX rdf:http://www.w3.org/1999/02/22-rdf-syntax-ns# PREFIX rdfs:http://www.w3.org/1999/02/22-rdf-syntax-ns# INSERT {<hello> <from> 'Italy'}WHERE{}")
+        assert.equal(update,"PREFIX rdf:<http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX rdfs:<http://www.w3.org/1999/02/22-rdf-syntax-ns#> INSERT {<hello> <from> 'Italy'}WHERE{}")
       }
       jsap.Producers.defaultArgs({obj:"Italy"})
     })
@@ -143,19 +143,19 @@ describe('Jsap', function() {
     });
     it("call a consumer",function () {
       jsap.api.subscribe = (query) => {
-        assert.equal(query,"PREFIX rdf:http://www.w3.org/1999/02/22-rdf-syntax-ns# PREFIX rdfs:http://www.w3.org/1999/02/22-rdf-syntax-ns# select * where{?a ?b ?c}")
+        assert.equal(query,"PREFIX rdf:<http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX rdfs:<http://www.w3.org/1999/02/22-rdf-syntax-ns#> select * where{?a ?b ?c}")
       }
       jsap.consumer("simple")()
     })
     it("call a consumer with bindings",function () {
       jsap.api.subscribe = (query) => {
-        assert.equal(query,"PREFIX rdf:http://www.w3.org/1999/02/22-rdf-syntax-ns# PREFIX rdfs:http://www.w3.org/1999/02/22-rdf-syntax-ns# select * where{<Italy> ?b ?c}")
+        assert.equal(query,"PREFIX rdf:<http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX rdfs:<http://www.w3.org/1999/02/22-rdf-syntax-ns#> select * where{<Italy> ?b ?c}")
       }
       jsap.consumer("defaultArgs")({a:"Italy"})
     })
     it("call a consumer from Consumers ",function () {
 			jsap.api.subscribe = (query) => {
-        assert.equal(query,"PREFIX rdf:http://www.w3.org/1999/02/22-rdf-syntax-ns# PREFIX rdfs:http://www.w3.org/1999/02/22-rdf-syntax-ns# select * where{<Italy> ?b ?c}")
+        assert.equal(query,"PREFIX rdf:<http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX rdfs:<http://www.w3.org/1999/02/22-rdf-syntax-ns#> select * where{<Italy> ?b ?c}")
       }
       jsap.Consumers.defaultArgs({a:"Italy"})
     })

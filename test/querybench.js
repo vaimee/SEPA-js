@@ -12,7 +12,7 @@ describe('querybench', function() {
       pippo : "world"
     }
     bench = new Bench(namespaces)
-    assert.equal("PREFIX test:hello PREFIX pippo:world", bench.sparql("",{}))
+    assert.equal("PREFIX test:<hello> PREFIX pippo:<world>", bench.sparql("",{}))
   });
   it('test initializated namespaces with query no bindgs', function() {
     namespaces = {
@@ -21,7 +21,7 @@ describe('querybench', function() {
     }
     bench = new Bench(namespaces)
     query = bench.sparql("select * where{?a ?b ?c}",{})
-    assert.equal("PREFIX test:hello PREFIX pippo:world select * where{?a ?b ?c}",query )
+    assert.equal("PREFIX test:<hello> PREFIX pippo:<world> select * where{?a ?b ?c}",query )
   });
   it('test initializated namespaces with query and bindgs', function() {
     namespaces = {
@@ -32,7 +32,7 @@ describe('querybench', function() {
     query = bench.sparql("select * where{?a ?b ?c}",{a:{
       value :"hello"
     }})
-    assert.equal("PREFIX test:hello PREFIX pippo:world select * where{hello ?b ?c}",query )
+    assert.equal("PREFIX test:<hello> PREFIX pippo:<world> select * where{hello ?b ?c}",query )
   });
   it('test initializated namespaces with query and bindgs with more occurences', function() {
     namespaces = {
@@ -43,7 +43,7 @@ describe('querybench', function() {
     query = bench.sparql("select * where{?a ?b ?c. ?a ?d ?f}",{a:{
       value :"hello"
     }})
-    assert.equal("PREFIX test:hello PREFIX pippo:world select * where{hello ?b ?c. hello ?d ?f}",query )
+    assert.equal("PREFIX test:<hello> PREFIX pippo:<world> select * where{hello ?b ?c. hello ?d ?f}",query )
   });
 
   it('test bindings literal', function() {
@@ -56,7 +56,7 @@ describe('querybench', function() {
       type : "literal",
       value :"hello"
     }})
-    assert.equal("PREFIX test:hello PREFIX pippo:world select * where{'hello' ?b ?c}",query )
+    assert.equal("PREFIX test:<hello> PREFIX pippo:<world> select * where{'hello' ?b ?c}",query )
   });
 
   it('test bindings literal number', function() {
@@ -69,7 +69,7 @@ describe('querybench', function() {
       type : "literal",
       value : 3
     }})
-    assert.equal("PREFIX test:hello PREFIX pippo:world select * where{?a ?b 3}",query )
+    assert.equal("PREFIX test:<hello> PREFIX pippo:<world> select * where{?a ?b 3}",query )
   });
 
   it('test bindings uri', function() {
@@ -82,6 +82,6 @@ describe('querybench', function() {
       type : "uri",
       value :"hello"
     }})
-    assert.equal("PREFIX test:hello PREFIX pippo:world select * where{<hello> ?b ?c}",query )
+    assert.equal("PREFIX test:<hello> PREFIX pippo:<world> select * where{<hello> ?b ?c}",query )
   });
 })
