@@ -1,5 +1,5 @@
 const assert = require('assert');
-const sepa = require('../../lib/core')
+const sepa = require('../../lib/core').client
 var config_host = "mml.arces.unibo.it"
 
 describe('Integration tests for api', function() {
@@ -29,16 +29,17 @@ describe('Integration tests for api', function() {
         (res)=>{
           assert.equal(200,res.status)
           let sub = sepa.subscribe("select ?a where {<integration> <tests> ?a}",data => {
-             if(!data.subscribed){
-               sub.unsubscribe()
-               done()
-             }else{
-               sepa.update("insert{<integration> <tests> '--hello--'}",
-             {host:config_host}).then(
-                 (res)=>{
-                   assert.equal(200,res.status)
-                 }
-               )
+             if(data.notification && data.notification.sequence == 0){
+              sepa.update("insert{<integration> <tests> '--hello--'}",
+              {host:config_host}).then(
+                  (res)=>{
+                    assert.equal(200,res.status)
+                  }
+                )
+             }else if (data.notification && data.notification.sequence > 0){
+              assert.equal(data.notification.addedResults.results.bindings[0].a.value,"--hello--")
+                sub.unsubscribe()
+                done()
              }
           },
           {host:config_host})
