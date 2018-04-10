@@ -1,12 +1,12 @@
 {
   "name": "@arces-wot/sepa-js",
-  "version": "0.0.6",
+  "version": "0.7.0",
   "description": "A js client library for Semantic Event Processing Architecture",
   "main": "index.js",
   "scripts": {
     "deploy": "browserify index.js --standalone Sepajs -o ./web/sepa.js",
     "test": "mocha",
-    "integration-test" : "mocha test/integration/*.js"
+    "integration-test": "mocha test/integration/*.js"
   },
   "keywords": [
     "semantic",
