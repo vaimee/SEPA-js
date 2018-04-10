@@ -1,7 +1,7 @@
 module.exports = `
 {
 	"parameters": {
-		"host": "mml.arces.unibo.it",
+		"host": "localhost",
 		"concurrentRequests": 5,
 		"ports": {
 			"http": 8000,
