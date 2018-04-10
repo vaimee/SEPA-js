@@ -1,5 +1,6 @@
 # SEPA-js 🚧🔥
 [![Build Status](https://travis-ci.org/arces-wot/SEPA-js.svg?branch=master)](https://travis-ci.org/arces-wot/SEPA-js)
+![SEPA 0.8.4](https://img.shields.io/badge/SEPA-0.8.4-blue.svg)
 
 A minimal SEPA client for browser and nodejs environments.
 **Note** : this library is in an early development stage, use at your own risk.
