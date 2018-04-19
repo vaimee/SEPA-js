@@ -1,5 +1,5 @@
 {
-  "name": "@arces-wot/sepa-js",
+  "name": "sepa-js",
   "description": "A js client library for Semantic Event Processing Architecture",
   "main": "./web/sepa.js",
   "authors": [
