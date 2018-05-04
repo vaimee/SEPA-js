@@ -32,7 +32,7 @@ const sepa = Sepajs.client
 
 ```javascript
 sepa.subscribe("select * where{?sub ?obj ?pred}",{
-    next(val) {console.log("Data received: " + data)},
+    next(data) {console.log("Data received: " + data)},
     error(err) { console.log("Received an error: " + err) },
     complete() { console.log("Server closed connection ") },
   },
