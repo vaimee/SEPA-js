@@ -81,10 +81,10 @@ Given this jsap file as example:
 	},
 	"updates": {
 		"simpleUpdate": {
-			"sparql": "INSERT { <hello> <from> <js> }WHERE{}"
+			"sparql": "INSERT DATA { <hello> <from> <js> }"
 		},
 		"updateArgs": {
-			"sparql": "INSERT {?sub ?pred ?obj}WHERE{}",
+			"sparql": "INSERT DATA {?sub ?pred ?obj}",
 			"forcedBindings": {
 				"sub": {
 					"type": "uri",
@@ -140,9 +140,9 @@ data = {
 }
 app.updateArgs(data).then(res=>{console.log(res)})
 ```
-The query issued to the engine will be:
+The SPARQL update issued to the broker will be:
 ```sparql
 PREFIX exp:<http://www.w3.org/example#>
-INSERT {<person1> <hasName> 'Max'}WHERE{}
+INSERT DATA {<person1> <hasName> 'Max'}
 ```
 **Note** in JSAP you can specify default arguments and their types
