@@ -54,7 +54,7 @@ const Jsap = require('sepa-js').jsap
 ```
 Browser:
 ```javascript
-const Jsap = Sepajs.jsap
+const Jsap = Sepajs.Jsap
 ```
 Given this jsap file as example:
 ```json
