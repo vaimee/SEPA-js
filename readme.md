@@ -81,18 +81,18 @@ Given this jsap file as example:
 	},
 	"updates": {
 		"simpleUpdate": {
-			"sparql": "INSERT DATA { <hello> <from> <js> }"
+			"sparql": "INSERT DATA { exp:hello exp:from 'js' }"
 		},
 		"updateArgs": {
 			"sparql": "INSERT DATA {?sub ?pred ?obj}",
 			"forcedBindings": {
 				"sub": {
 					"type": "uri",
-					"value": "hello"
+					"value": "exp:hello"
 				},
 				"pred": {
 					"type": "uri",
-					"value": "from"
+					"value": "exp:from"
 				},
 				"obj": {
 					"type": "literal",
@@ -134,8 +134,8 @@ The JSAP api support query bindings to easly inject data in query templates. Her
 ```javascript
 app = new Jsap(Jsap)
 data = {
-  sub : "person1",
-  pred: "hasName",
+  sub : "exp:person1",
+  pred: "exp:hasName",
   obj : "Max"
 }
 app.updateArgs(data).then(res=>{console.log(res)})
@@ -143,6 +143,6 @@ app.updateArgs(data).then(res=>{console.log(res)})
 The SPARQL update issued to the broker will be:
 ```sparql
 PREFIX exp:<http://www.w3.org/example#>
-INSERT DATA {<person1> <hasName> 'Max'}
+INSERT DATA {exp:person1 exp:hasName 'Max'}
 ```
 **Note** in JSAP you can specify default arguments and their types
