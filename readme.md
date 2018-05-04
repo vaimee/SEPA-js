@@ -110,7 +110,7 @@ Given this jsap file as example:
 			"forcedBindings": {
 				"a": {
 					"type": "uri",
-					"value": "subj"
+					"value": "exp:subj"
 				}
 			}
 		}
