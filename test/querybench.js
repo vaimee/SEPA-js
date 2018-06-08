@@ -84,4 +84,19 @@ describe('querybench', function() {
     }})
     assert.equal("PREFIX test:<hello> PREFIX pippo:<world> select * where{<hello> ?b ?c}",query )
   });
+
+  it('it should substitute only the binding name', function () {
+    namespaces = {
+      test: "hello",
+      pippo: "world"
+    }
+    bench = new Bench(namespaces)
+    query = bench.sparql("select * where{?a ?ab ?c}", {
+      a: {
+        type: "uri",
+        value: "hello"
+      }
+    })
+    assert.equal("PREFIX test:<hello> PREFIX pippo:<world> select * where{<hello> ?ab ?c}", query)
+  });
 })
