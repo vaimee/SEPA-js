@@ -21,7 +21,7 @@ Sepa-js comes with basic api to interact with the engine. But it also provides a
 Nodejs:
 
 ```javascript
-const sepa = require('sepa-js').client
+const sepa = require('@arces-wot/sepa-js').client
 ```
 Browser:
 ```javascript
@@ -48,11 +48,11 @@ sepa.update("insert {<hello> <from> 'js'}where{}", {host:"www.vaimee.com"})
 Nodejs:
 
 ```javascript
-const Jsap = require('sepa-js').jsap
+const Jsap = require('sepa-js').Jsap
 ```
 Browser:
 ```javascript
-const Jsap = Sepajs.jsap
+const Jsap = Sepajs.Jsap
 ```
 Given this jsap file as example:
 ```json
