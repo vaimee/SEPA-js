@@ -1,6 +1,8 @@
 # SEPA-js 🚧🔥
 [![Build Status](https://travis-ci.org/arces-wot/SEPA-js.svg?branch=master)](https://travis-ci.org/arces-wot/SEPA-js)
-![SEPA 0.8.4](https://img.shields.io/badge/SEPA-0.8.4-blue.svg)
+[![SEPA 0.8.4](https://img.shields.io/badge/SEPA-0.8.4-blue.svg)](https://github.com/arces-wot/SEPA/releases/download/0.8.4/engine-0.8.4.jar)
+[![npm version](https://badge.fury.io/js/%40arces-wot%2Fsepa-js.svg)](https://badge.fury.io/js/%40arces-wot%2Fsepa-js)
+
 
 A minimal SEPA client for browser and nodejs environments.
 **Note** : this library is in an early development stage, use at your own risk.
@@ -30,7 +32,7 @@ const sepa = Sepajs.client
 
 ```javascript
 sepa.subscribe("select * where{?sub ?obj ?pred}",{
-    next(val) {console.log("Data received: " + data)},
+    next(data) {console.log("Data received: " + data)},
     error(err) { console.log("Received an error: " + err) },
     complete() { console.log("Server closed connection ") },
   },
@@ -79,18 +81,18 @@ Given this jsap file as example:
 	},
 	"updates": {
 		"simpleUpdate": {
-			"sparql": "INSERT { <hello> <from> <js> }WHERE{}"
+			"sparql": "INSERT DATA { exp:hello exp:from 'js' }"
 		},
 		"updateArgs": {
-			"sparql": "INSERT {?sub ?pred ?obj}WHERE{}",
+			"sparql": "INSERT DATA {?sub ?pred ?obj}",
 			"forcedBindings": {
 				"sub": {
 					"type": "uri",
-					"value": "hello"
+					"value": "exp:hello"
 				},
 				"pred": {
 					"type": "uri",
-					"value": "from"
+					"value": "exp:from"
 				},
 				"obj": {
 					"type": "literal",
@@ -108,7 +110,7 @@ Given this jsap file as example:
 			"forcedBindings": {
 				"a": {
 					"type": "uri",
-					"value": "subj"
+					"value": "exp:subj"
 				}
 			}
 		}
@@ -132,15 +134,15 @@ The JSAP api support query bindings to easly inject data in query templates. Her
 ```javascript
 app = new Jsap(Jsap)
 data = {
-  sub : "person1",
-  pred: "hasName",
+  sub : "exp:person1",
+  pred: "exp:hasName",
   obj : "Max"
 }
 app.updateArgs(data).then(res=>{console.log(res)})
 ```
-The query issued to the engine will be:
+The SPARQL update issued to the broker will be:
 ```sparql
 PREFIX exp:<http://www.w3.org/example#>
-INSERT {<person1> <hasName> 'Max'}WHERE{}
+INSERT DATA {exp:person1 exp:hasName 'Max'}
 ```
 **Note** in JSAP you can specify default arguments and their types
