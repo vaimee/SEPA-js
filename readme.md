@@ -2,7 +2,7 @@
 [![Build Status](https://travis-ci.org/arces-wot/SEPA-js.svg?branch=master)](https://travis-ci.org/arces-wot/SEPA-js)
 [![SEPA 0.8.4](https://img.shields.io/badge/SEPA-0.8.4-blue.svg)](https://github.com/arces-wot/SEPA/releases/download/0.8.4/engine-0.8.4.jar)
 [![npm version](https://badge.fury.io/js/%40arces-wot%2Fsepa-js.svg)](https://badge.fury.io/js/%40arces-wot%2Fsepa-js)
-[![web version](https://data.jsdelivr.com/v1/package/npm/badge/badge)](https://www.jsdelivr.com/package/npm/@arces-wot/sepa-js/web/sepa.js)
+[![Web Version](https://data.jsdelivr.com/v1/package/npm/@arces-wot/sepa-js/badge)](https://www.jsdelivr.com/package/npm/@arces-wot/sepa-js)
 
 
 A minimal SEPA client for browser and nodejs environments.
