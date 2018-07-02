@@ -7,13 +7,14 @@ describe('Jsap', function() {
   describe('#constructor',function() {
     it("empty configuration",function () {
       let jsap = new Jsap()
-      assert.ok(jsap.parameters)
-      assert.equal(jsap.parameters, defaults)
+      assert.ok(jsap.host)
+      assert.equal(jsap.sparql11protocol, defaults.sparql11protocol)
+      assert.equal(jsap.sparql11seprotocol, defaults.sparql11seprotocol)
     })
 
     it("from string",function () {
       let jsap = new Jsap(test_jsap)
-      assert.ok(jsap.parameters)
+      assert.ok(jsap.host)
       assert.ok(jsap.extended.thirdparty)
       assert.ok(!jsap.simple)
       assert.ok(!jsap.defaultArgs)
@@ -21,7 +22,7 @@ describe('Jsap', function() {
 
     it("from oject",function () {
       let obj_jsap = {
-        parameters : { host : "test_host.com"},
+        host : "test_host.com",
         queries : {
           aquery : {
             sparql : "select * where {?a ?b ?c}"
@@ -29,16 +30,19 @@ describe('Jsap', function() {
         }
       }
       let jsap = new Jsap(obj_jsap)
-      assert.ok(jsap.parameters)
-      assert.equal(jsap.parameters.host,"test_host.com")
-      assert.equal(jsap.parameters.ports,defaults.ports)
+      
+      assert.equal(jsap.host,"test_host.com")
+
+      //Check if jsap stores the default configuration
+      assert.equal(jsap.sparql11protocol.port, defaults.sparql11protocol.port)
+      
       assert.ok(jsap.aquery)
       assert.equal(typeof jsap.aquery,"function")
     })
 
     it("deep copy",function () {
       let obj_jsap = {
-        parameters : { host : "test_host.com"},
+        host : "test_host.com",
         queries : {
           aquery : {
             sparql : "select * where {?a ?b ?c}"
@@ -46,8 +50,8 @@ describe('Jsap', function() {
         }
       }
       let jsap = new Jsap(obj_jsap)
-      obj_jsap.parameters.host = "hello world"
-      assert.equal(jsap.parameters.host,"test_host.com")
+      obj_jsap.host = "hello world"
+      assert.equal(jsap.host,"test_host.com")
     })
 
   })
@@ -76,6 +80,13 @@ describe('Jsap', function() {
       }
       jsap.update("defaultArgs",{obj:"Italy",sub:"Bye"})
     })
+		it("Check override configuration",function () {
+      jsap.api.update = (update,config) => {
+        assert.equal(config.sparql11protocol.port,7000)
+        assert.equal(config.sparql11protocol.update.format,"XML")
+      }
+      jsap.update("costumProtocol",)
+    })
   })
 
   describe('#subscribe',function(){
@@ -96,6 +107,14 @@ describe('Jsap', function() {
         assert.equal(update,"PREFIX rdf:<http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX rdfs:<http://www.w3.org/1999/02/22-rdf-syntax-ns#> INSERT {<hello> <from> 'Italy'}WHERE{}")
       }
       jsap.update("defaultArgs",{obj:"Italy"})
+    })
+
+    it("Check override configuration", function () {
+      jsap.api.subscribe = (query, handler, config) => {
+        assert.equal(config.sparql11seprotocol.protocol, "wss")
+        assert.equal(config.host, "other.host.it")
+      }
+      jsap.subscribe("costumProtocol" )
     })
   })
 
