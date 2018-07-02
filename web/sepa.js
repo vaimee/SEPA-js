@@ -12,22 +12,41 @@ module.exports = {
 }
 
 },{"./defaults":3,"./jsap":4,"./sepa":6}],3:[function(require,module,exports){
-module.exports = {
-		"host" : "localhost" ,
-		"ports" : {
-			"http" : 8000 ,
-			"https" : 8443 ,
-			"ws" : 9000 ,
-			"wss" : 9443}
-		 ,
-		"paths" : {
-			"query" : "/query" ,
-			"update" : "/update" ,
-			"subscribe" : "/subscribe" ,
-			"register" : "/oauth/register" ,
-			"tokenRequest" : "/oauth/token" ,
-			"securePath" : "/secure"}
-}
+module.exports = Object.freeze({
+	"host": "mml.arces.unibo.it",
+	"oauth": {
+		"enable": false,
+		"register": "https://localhost:8443/oauth/register",
+		"tokenRequest": "https://localhost:8443/oauth/token"
+	},
+	"sparql11protocol": {
+		"protocol": "http",
+		"port": 8000,
+		"query": {
+			"path": "/query",
+			"method": "POST",
+			"format": "JSON"
+		},
+		"update": {
+			"path": "/update",
+			"method": "POST",
+			"format": "JSON"
+		}
+	},
+	"sparql11seprotocol": {
+		"protocol": "ws",
+		"availableProtocols": {
+			"ws": {
+				"port": 9000,
+				"path": "/subscribe"
+			},
+			"wss": {
+				"port": 9443,
+				"path": "/secure/subscribe"
+			}
+		}
+	}
+})
 
 },{}],4:[function(require,module,exports){
 const SEPA = require('./sepa');
@@ -51,12 +70,18 @@ class Jsap {
     if (typeof config === 'string') {
       config = JSON.parse(config)
     }
-    let parameters = Object.assign(defaults,config.parameters)
-    this.updates = {}
-    this.queries = {}
-    Object.assign(this,config)
-    this.parameters = parameters
-    this.api   = new SEPA(this.parameters)
+
+    let parameters = (({ host, sparql11protocol, sparql11seprotocol }) => (prune({ host, sparql11protocol, sparql11seprotocol })))(config)
+    parameters = Object.assign({},defaults,parameters)
+    
+    Object.assign(this, parameters)
+    
+    this.namespaces = config.namespaces ? config.namespaces : {}
+    this.extended   = config.extended   ? config.extended : {}
+    this.updates    = config.updates    ? config.updates : {}
+    this.queries    = config.queries    ? config.queries : {}
+    
+    this.api   = new SEPA(parameters)
     this.bench = new Bench(this.namespaces)
 
     Object.keys(this.updates).forEach(k =>{
@@ -78,19 +103,21 @@ class Jsap {
   subscribe(key,bindings,handler){
     let query = this.queries[key].sparql
     let binds = trasformBindings(bindings,this.queries[key].forcedBindings)
-    let forcedBindings = this.queries[key].forcedBindings ? this.queries[key].forcedBindings : {}
-    binds = Object.assign(forcedBindings,binds)
+    let config = (({ host, sparql11seprotocol }) => (prune({ host, sparql11seprotocol })))(this.queries[key])
+    
     query = this.bench.sparql(query,binds)
-    return this.api.subscribe(query,handler)
+    
+    return this.api.subscribe(query,handler,config)
   }
 
   update(key,bindings){
     let update = this.updates[key].sparql
-    let binds = trasformBindings(bindings,this.updates[key].forcedBindings)
-    let forcedBindings = this.updates[key].forcedBindings ? this.updates[key].forcedBindings : {}
-    binds = Object.assign(forcedBindings,binds)
+    let binds  = trasformBindings(bindings,this.updates[key].forcedBindings)   
+    let config = (({ host, sparql11protocol }) => (prune({ host, sparql11protocol })))(this.updates[key])
+
     update = this.bench.sparql(update,binds)
-    return this.api.update(update);
+
+    return this.api.update(update,config);
   }
 
   producer(key){
@@ -118,6 +145,22 @@ class Jsap {
     })
     return result;
   }
+}
+/**
+ * Removes undedfined properties
+ * @param {Object} obj 
+ */
+function prune(obj) {
+  for (const key in obj) {
+    if (obj.hasOwnProperty(key)) {
+      const element = obj[key];
+      
+      if(!element){
+        delete(obj[key])
+      }
+    }
+  }
+  return obj;
 }
 module.exports = Jsap;
 
@@ -181,16 +224,18 @@ class SEPA {
 
   constructor(parameters) {
     this.config = parameters
-    this.queryURI = utils.createURI('http',parameters.host,parameters.ports.http,parameters.paths.query)
-    this.updateURI = utils.createURI('http',parameters.host,parameters.ports.http,parameters.paths.update)
-    this.subscribeURI = utils.createURI('ws',parameters.host,parameters.ports.ws,parameters.paths.subscribe)
+    this.queryURI = utils.createURI('http', parameters.host, parameters.sparql11protocol.port, parameters.sparql11protocol.query.path)
+    this.updateURI = utils.createURI('http', parameters.host, parameters.sparql11protocol.port, parameters.sparql11protocol.update.path)
+    let subprotcol = parameters.sparql11seprotocol.protocol
+    let selectSubProtocol = parameters.sparql11seprotocol.availableProtocols[subprotcol]
+    this.subscribeURI = utils.createURI('ws', parameters.host, selectSubProtocol.port, selectSubProtocol.path)
   }
 
   query(query,config) {
     let q_uri = this.queryURI
     if ( config !== undefined){
       let temp = Object.assign(this.config,config)
-      q_uri = utils.createURI('http',temp.host,temp.ports.http,temp.paths.query)
+      q_uri = utils.createURI('http', temp.host, temp.sparql11protocol.port, temp.sparql11protocol.query.path)
     }
     console.log(q_uri);;
     return axios.post(q_uri,query, {"headers" : {
@@ -204,7 +249,7 @@ class SEPA {
     let up_uri = this.updateURI
     if ( config !== undefined){
       let temp = Object.assign(this.config,config)
-      up_uri = utils.createURI('http',temp.host,temp.ports.http,temp.paths.update)
+      up_uri = utils.createURI('http', temp.host, temp.sparql11protocol.port, temp.sparql11protocol.update.path)
     }
 
     return axios.post(up_uri,update, {"headers" : {
@@ -220,7 +265,9 @@ class SEPA {
     let sub_uri = this.subscribeURI
     if ( config !== undefined){
       let temp = Object.assign(this.config,config)
-      sub_uri = utils.createURI('ws',temp.host,temp.ports.ws,temp.paths.subscribe)
+      let subprotcol = temp.sparql11seprotocol.protocol
+      let selectSubProtocol = temp.sparql11seprotocol.availableProtocols[subprotcol]
+      sub_uri = utils.createURI('ws', temp.host, selectSubProtocol.port, selectSubProtocol.path)
     }
 
     let observable = new Observable(obs => {
