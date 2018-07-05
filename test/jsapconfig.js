@@ -1,6 +1,6 @@
 module.exports = `
 {
-	"host": "mml.arces.unibo.it",
+	"host": "localhost",
 	"oauth": {
 		"enable": false,
 		"register": "https://localhost:8443/oauth/register",

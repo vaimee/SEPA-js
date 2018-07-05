@@ -30,7 +30,7 @@ describe('Integration tests for api', function() {
           assert.equal(200,res.status)
           let sub = sepa.subscribe("select ?a where {<integration> <tests> ?a}",data => {
              if(data.notification && data.notification.sequence == 0){
-              sepa.update("insert{<integration> <tests> '--hello--'}",
+              sepa.update("insert data{<integration> <tests> '--hello--'}",
               {host:config_host}).then(
                   (res)=>{
                     assert.equal(200,res.status)
