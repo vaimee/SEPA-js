@@ -58,15 +58,16 @@ sepa.query("select * where {?s ?p 'js'}", {host:"www.vaimee.com"})
 Nodejs:
 
 ```javascript
-const Jsap = require('sepa-js').Jsap
+const JsapApi = require('sepa-js').Jsap
 ```
 Browser:
 ```javascript
-const Jsap = Sepajs.Jsap
+const JsapApi = Sepajs.Jsap
 ```
-Given this jsap file as example:
+
+#### JSAP object example:
 ```json
-{
+jsap_example = {
 	"host": "mml.arces.unibo.it",
 	"oauth": {
 		"enable" : false,
@@ -141,28 +142,28 @@ Given this jsap file as example:
 	}
 }
 ```
-To create a consumer you can:
+#### Subscriber
 ```javascript
-app = new Jsap(Jsap)
-app.simpleQuery({},data => {
-    console.log(data);
+subscriber = new JsapApi(jsap_example)
+subscriber.simpleQuery({},data => {
+    console.log("Added & removed SPARQL query bindings: " + data);
 })
 ```
-Otherwise a producer can be created with this code snippet:
+#### Publisher
 ```javascript
-app = new Jsap(Jsap)
-app.simpleUpdate().then(res=>{console.log(res)})
+publisher = new JsapApi(jsap_example)
+publisher.simpleUpdate().then(res=>{console.log("Update response: " + res)})
 ```
-
+#### Forced bindings
 The JSAP api support query bindings to easly inject data in query templates. Here is an example to use a producer with code specifed bindings:
 ```javascript
-app = new Jsap(Jsap)
+app = new JsapApi(jsap_example)
 data = {
   sub : "exp:person1",
   pred: "exp:hasName",
   obj : "Max"
 }
-app.updateArgs(data).then(res=>{console.log(res)})
+app.updateArgs(data).then(res=>{console.log("Update response: " + res)})
 ```
 The SPARQL update issued to the broker will be:
 ```sparql
