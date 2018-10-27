@@ -22,7 +22,6 @@ Sepa-js comes with basic api to interact with the engine. But it also provides a
 ### Core api
 
 Nodejs:
-
 ```javascript
 const sepa = require('@arces-wot/sepa-js').client
 ```
@@ -30,7 +29,7 @@ Browser:
 ```javascript
 const sepa = Sepajs.client
 ```
-##### Subscribe
+#### Subscribe
 ```javascript
 sepa.subscribe("select * where{?sub ?obj ?pred}",{
     next(data) {console.log("Added & removed SPARQL bindings: " + data)},
@@ -41,13 +40,13 @@ sepa.subscribe("select * where{?sub ?obj ?pred}",{
 }
 ```
 
-##### Publish
+#### Publish
 ```javascript
 sepa.update("insert {<hello> <from> 'js'}where{}", {host:"www.vaimee.com"})
     .then(()=>{console.log("Updated");})
 ```
 
-##### Query
+#### Query
 ```javascript
 sepa.query("select * where {?s ?p 'js'}", {host:"www.vaimee.com"})
     .then((data)=>{console.log("SPARQL bindings: " + data);})
@@ -56,7 +55,6 @@ sepa.query("select * where {?s ?p 'js'}", {host:"www.vaimee.com"})
 ### JSAP api
 
 Nodejs:
-
 ```javascript
 const JsapApi = require('sepa-js').Jsap
 ```
