@@ -30,10 +30,10 @@ Browser:
 ```javascript
 const sepa = Sepajs.client
 ```
-
+##### Subscribe
 ```javascript
 sepa.subscribe("select * where{?sub ?obj ?pred}",{
-    next(data) {console.log("Data received: " + data)},
+    next(data) {console.log("Added & removed SPARQL bindings: " + data)},
     error(err) { console.log("Received an error: " + err) },
     complete() { console.log("Server closed connection ") },
   },
@@ -41,9 +41,16 @@ sepa.subscribe("select * where{?sub ?obj ?pred}",{
 }
 ```
 
+##### Publish
 ```javascript
 sepa.update("insert {<hello> <from> 'js'}where{}", {host:"www.vaimee.com"})
     .then(()=>{console.log("Updated");})
+```
+
+##### Query
+```javascript
+sepa.query("select * where {?s ?p 'js'}", {host:"www.vaimee.com"})
+    .then((data)=>{console.log("SPARQL bindings: " + data);})
 ```
 
 ### JSAP api
