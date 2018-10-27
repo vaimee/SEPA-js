@@ -17,7 +17,7 @@ or in your html document
 `<script src="https://cdn.jsdelivr.net/npm/@arces-wot/sepa-js@0.1.0/web/sepa.js"/>`
 
 ## Usage
-Sepa-js comes with basic api to interact with the engine. But it also provides a rich interface to create Semantic Applications with the support of **J**SON **S**emantic **A**pplication **P**rofile. ****
+Sepa-js comes with basic api to interact with the engine. But it also provides a rich interface to create Dynamic Linked Data applications with the support of **J**SON **S**emantic **A**pplication **P**rofile. ****
 
 ### Core api
 
