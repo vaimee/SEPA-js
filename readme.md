@@ -47,87 +47,101 @@ sepa.update("insert {<hello> <from> 'js'}where{}", {host:"www.vaimee.com"})
 ```
 
 ### JSAP api
+**J**ons **S**parql **A**pplication **P**rofile. 
 
 Nodejs:
 
 ```javascript
-const Jsap = require('sepa-js').Jsap
+const App = require('sepa-js').Jsap
 ```
 Browser:
 ```javascript
-const Jsap = Sepajs.Jsap
+const App = Sepajs.Jsap
 ```
-Given this jsap file as example:
+
+```javascript
+app = new App({
+	host: "mml.arces.unibo.it",
+	queries : {
+		simpleQuery : { sparql : "select * where {?a ?b ?c}"}
+	}
+})
+
+app.simpleQuery({},data => {
+    console.log(data);
+})
+```
+Given this jsap object as example:
 ```json
-{
-	"host": "mml.arces.unibo.it",
-	"oauth": {
-		"enable" : false,
-		"register": "https://localhost:8443/oauth/register",
-		"tokenRequest": "https://localhost:8443/oauth/token"
+let jsap  = {
+	host: "mml.arces.unibo.it",
+	oauth: {
+		enable : false,
+		register: "https://localhost:8443/oauth/register",
+		tokenRequest: "https://localhost:8443/oauth/token"
 	},
-	"sparql11protocol": {
-		"protocol": "http",
-		"port": 8000,
-		"query": {
-			"path": "/query",
-			"method": "POST",
-			"format": "JSON"
+	sparql11protocol: {
+		protocol: "http",
+		port: 8000,
+		query: {
+			path: "/query",
+			method: "POST",
+			format: "JSON"
 		},
-		"update": {
-			"path": "/update",
-			"method": "POST",
-			"format": "JSON"
+		update: {
+			path: "/update",
+			method: "POST",
+			format: "JSON"
 		}
 	},
-	"sparql11seprotocol": {
-		"protocol": "ws",
-		"availableProtocols": {
-			"ws": {
-				"port": 9000,
-				"path": "/subscribe"
+	sparql11seprotocol: {
+		protocol: "ws",
+		availableProtocols: {
+			ws: {
+				port: 9000,
+				path: "/subscribe"
 			},
-			"wss": {
-				"port": 9443,
-				"path": "/secure/subscribe"
+			wss: {
+				port: 9443,
+				path: "/secure/subscribe"
 			}
 		}
 	},
-	"namespaces": {
-		"exp": "http://www.w3.org/example#",
+	namespaces: {
+		exp: "http://www.w3.org/example#",
 	},
-	"updates": {
-		"simpleUpdate": {
-			"sparql": "INSERT DATA { exp:hello exp:from 'js' }"
+	updates: {
+		simpleUpdate: {
+			sparql: "INSERT DATA { exp:hello exp:from 'js' }"
 		},
-		"updateArgs": {
-			"sparql": "INSERT DATA {?sub ?pred ?obj}",
-			"forcedBindings": {
-				"sub": {
-					"type": "uri",
-					"value": "exp:hello"
+		updateArgs: {
+			sparql: "INSERT DATA {?sub ?pred ?obj}",
+			forcedBindings: {
+				sub: {
+					type: "uri",
+					value: "exp:hello"
 				},
-				"pred": {
-					"type": "uri",
-					"value": "exp:from"
+				pred: {
+					type: "uri",
+					value: "exp:from"
 				},
-				"obj": {
-					"type": "literal",
-					"value": "js"
+				obj: {
+					type: "literal",
+					value: "js"
 				}
 			}
 		}
 	},
-	"queries": {
-		"simpleQuery": {
-			"sparql": "select * where{?a ?b ?c}"
+	 queries : {
+		 simpleQuery : {
+			 sparql : "select * where{?a ?b ?c}"
 		},
-		"queryArgs": {
-			"sparql": "select * where{?a ?b ?c}",
-			"forcedBindings": {
-				"a": {
-					"type": "uri",
-					"value": "exp:subj"
+		 queryArgs : {
+			 sparql : "select * where{?a ?b ?c}",
+			 forcedBindings : {
+				 a : {
+					 type : "uri",
+					 value : "exp:subj"
 				}
 			}
 		}
@@ -136,20 +150,20 @@ Given this jsap file as example:
 ```
 To create a consumer you can:
 ```javascript
-app = new Jsap(Jsap)
+app = new App(jsap)
 app.simpleQuery({},data => {
     console.log(data);
 })
 ```
 Otherwise a producer can be created with this code snippet:
 ```javascript
-app = new Jsap(Jsap)
+app = new App(jsap)
 app.simpleUpdate().then(res=>{console.log(res)})
 ```
 
 The JSAP api support query bindings to easly inject data in query templates. Here is an example to use a producer with code specifed bindings:
 ```javascript
-app = new Jsap(Jsap)
+app = new App(jsap)
 data = {
   sub : "exp:person1",
   pred: "exp:hasName",
