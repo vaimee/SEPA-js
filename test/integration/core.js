@@ -3,6 +3,13 @@ const sepa = require('../../lib/core').client
 var config_host = "localhost"
 
 describe('Integration tests for api', function() {
+    
+    it('it should fail with wrong uri', function() {
+      return sepa.query("select ?a where {<integration> <tests> ?a}",{host:"invalidURI"})
+      .then(()=>{assert(false,"it should fail!")}).catch(() => {
+        assert(true,"Ok")
+      })
+    });
     it('test subscription', function(done) {
        let sub = sepa.subscribe("select ?a where {<integration> <tests> ?a}",data => {
           sub.unsubscribe()
