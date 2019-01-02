@@ -17,12 +17,11 @@ or in your html document
 `<script src="https://cdn.jsdelivr.net/npm/@arces-wot/sepa-js@0.1.0/web/sepa.js"/>`
 
 ## Usage
-Sepa-js comes with basic api to interact with the engine. But it also provides a rich interface to create Semantic Applications with the support of **J**SON **S**emantic **A**pplication **P**rofile. ****
+Sepa-js comes with basic api to interact with the engine. But it also provides a rich interface to create Dynamic Linked Data applications with the support of **J**SON **S**emantic **A**pplication **P**rofile. ****
 
 ### Core api
 
 Nodejs:
-
 ```javascript
 const sepa = require('@arces-wot/sepa-js').client
 ```
@@ -30,10 +29,10 @@ Browser:
 ```javascript
 const sepa = Sepajs.client
 ```
-
+#### Subscribe
 ```javascript
 sepa.subscribe("select * where{?sub ?obj ?pred}",{
-    next(data) {console.log("Data received: " + data)},
+    next(data) {console.log("Added & removed SPARQL bindings: " + data)},
     error(err) { console.log("Received an error: " + err) },
     complete() { console.log("Server closed connection ") },
   },
@@ -41,26 +40,32 @@ sepa.subscribe("select * where{?sub ?obj ?pred}",{
 }
 ```
 
+#### Publish
 ```javascript
 sepa.update("insert {<hello> <from> 'js'}where{}", {host:"www.vaimee.com"})
     .then(()=>{console.log("Updated");})
+```
+
+#### Query
+```javascript
+sepa.query("select * where {?s ?p 'js'}", {host:"www.vaimee.com"})
+    .then((data)=>{console.log("SPARQL bindings: " + data);})
 ```
 
 ### JSAP api
 **J**ons **S**parql **A**pplication **P**rofile. 
 
 Nodejs:
-
 ```javascript
 const App = require('sepa-js').Jsap
 ```
 Browser:
 ```javascript
-const App = Sepajs.Jsap
+const JsapApi = Sepajs.Jsap
 ```
 
 ```javascript
-app = new App({
+app = new JsapApi({
 	host: "mml.arces.unibo.it",
 	queries : {
 		simpleQuery : { sparql : "select * where {?a ?b ?c}"}
@@ -71,14 +76,15 @@ app.simpleQuery({},data => {
     console.log(data);
 })
 ```
-Given this jsap object as example:
+
+#### JSAP object example:
 ```json
-let jsap  = {
-	host: "mml.arces.unibo.it",
-	oauth: {
-		enable : false,
-		register: "https://localhost:8443/oauth/register",
-		tokenRequest: "https://localhost:8443/oauth/token"
+jsap_example = {
+	"host": "mml.arces.unibo.it",
+	"oauth": {
+		"enable" : false,
+		"register": "https://localhost:8443/oauth/register",
+		"tokenRequest": "https://localhost:8443/oauth/token"
 	},
 	sparql11protocol: {
 		protocol: "http",
@@ -148,32 +154,32 @@ let jsap  = {
 	}
 }
 ```
-To create a consumer you can:
+#### Subscriber
 ```javascript
-app = new App(jsap)
-app.simpleQuery({},data => {
-    console.log(data);
+subscriber = new JsapApi(jsap_example)
+subscriber.simpleQuery({},data => {
+    console.log("Added & removed SPARQL query bindings: " + data);
 })
 ```
-Otherwise a producer can be created with this code snippet:
+#### Publisher
 ```javascript
-app = new App(jsap)
-app.simpleUpdate().then(res=>{console.log(res)})
+publisher = new JsapApi(jsap_example)
+publisher.simpleUpdate().then(res=>{console.log("Update response: " + res)})
 ```
-
+#### Forced bindings
 The JSAP api support query bindings to easly inject data in query templates. Here is an example to use a producer with code specifed bindings:
 ```javascript
-app = new App(jsap)
+app = new JsapApi(jsap_example)
 data = {
   sub : "exp:person1",
   pred: "exp:hasName",
   obj : "Max"
 }
-app.updateArgs(data).then(res=>{console.log(res)})
+app.updateArgs(data).then(res=>{console.log("Update response: " + res)})
 ```
 The SPARQL update issued to the broker will be:
 ```sparql
 PREFIX exp:<http://www.w3.org/example#>
 INSERT DATA {exp:person1 exp:hasName 'Max'}
 ```
-**Note** in JSAP you can specify default arguments and their types
+**Note** with JSAP you can specify default arguments and their types
