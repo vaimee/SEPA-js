@@ -187,7 +187,7 @@ class SPARQLbench {
     });
     prefixes = prefixes.join(" ")
     Object.keys(bindings).forEach(k =>{
-      let search = new RegExp("(\\?|\\$)" + k +"(?=\\s|}|\\?)",'g')
+      let search = new RegExp("(\\?|\\$)" + k +"(?=\\.|\\s|}|\\?)",'g')
       
       switch (bindings[k].type) {
         case "uri":
@@ -234,7 +234,7 @@ class SEPA {
   query(query,config) {
     let q_uri = this.queryURI
     if ( config !== undefined){
-      let temp = Object.assign(this.config,config)
+      let temp = Object.assign({},this.config,config)
       q_uri = utils.createURI('http', temp.host, temp.sparql11protocol.port, temp.sparql11protocol.query.path)
     }
     console.log(q_uri);;
@@ -248,7 +248,7 @@ class SEPA {
   update(update,config) {
     let up_uri = this.updateURI
     if ( config !== undefined){
-      let temp = Object.assign(this.config,config)
+      let temp = Object.assign({},this.config,config)
       up_uri = utils.createURI('http', temp.host, temp.sparql11protocol.port, temp.sparql11protocol.update.path)
     }
 
@@ -264,7 +264,7 @@ class SEPA {
   subscribe (query,observer,config) {
     let sub_uri = this.subscribeURI
     if ( config !== undefined){
-      let temp = Object.assign(this.config,config)
+      let temp = Object.assign({},this.config,config)
       let subprotcol = temp.sparql11seprotocol.protocol
       let selectSubProtocol = temp.sparql11seprotocol.availableProtocols[subprotcol]
       sub_uri = utils.createURI('ws', temp.host, selectSubProtocol.port, selectSubProtocol.path)
