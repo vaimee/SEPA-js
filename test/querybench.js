@@ -113,4 +113,14 @@ describe('querybench', function() {
     })
     assert.equal("PREFIX test:<hello> PREFIX pippo:<world> select * where{test:hello ?ab ?c}", query)
   });
+  it('it should replace variable even if it is followed by . (dot)' , function () {
+    bench = new Bench({})
+    query = bench.sparql("select * where{?a ?ab ?c.}", {
+      c : {
+        type: "literal",
+        value: 10
+      }
+    })
+    assert.equal("select * where{?a ?ab 10.}", query)
+  });
 })
