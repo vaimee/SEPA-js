@@ -16,9 +16,11 @@
   "license": "ISC",
   "dependencies": {
     "axios": "^0.18.0",
+    "bufferutil": "^4.0.1",
     "deepmerge": "^3.0.0",
     "isomorphic-ws": "^4.0.0",
     "sinon": "^7.2.2",
+    "utf-8-validate": "^5.0.2",
     "ws": "^5.0.0",
     "zen-observable": "^0.8.6"
   },
