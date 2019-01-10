@@ -16,6 +16,7 @@
   "license": "ISC",
   "dependencies": {
     "axios": "^0.18.0",
+    "deepmerge": "^3.0.0",
     "isomorphic-ws": "^4.0.0",
     "sinon": "^7.2.2",
     "ws": "^5.0.0",

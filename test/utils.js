@@ -57,6 +57,25 @@ describe('utils', function() {
       expected.a = "welcome"
       assert.deepEqual(utils.mergeWithDefaults(defaults,{ a : "welcome"}),expected,"'a' field is not correct")
     });
+    it("shouldn't remove a field ", () => {
+      let arg = {
+        b: {
+          name: "pippo",
+          age: 2
+        }
+      }
+      assert.deepEqual(utils.mergeWithDefaults(defaults,arg),defaults,"'a' field is not correct")
+    });
+    it("shouldn't remove age field ", () => {
+      let arg = {
+        a: "hello",
+        b: {
+          name: "pippo",
+         
+        }
+      }
+      assert.deepEqual(utils.mergeWithDefaults(defaults,arg),defaults,"'age' field is not correct")
+    });
   });
     
 });
