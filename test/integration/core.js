@@ -11,45 +11,54 @@ describe('Integration tests for api', function() {
       })
     });
     it('test subscription', function(done) {
-       let sub = sepa.subscribe("select ?a where {<integration> <tests> ?a}",data => {
-          sub.unsubscribe()
-          assert.ok(data.notification)
-          assert.equal(data.notification.sequence,0)
-          done()
-       },
-       {host:config_host})
+      let sub = sepa.subscribe("select ?a where {<integration> <tests> ?a}", { host: config_host })
+      sub.on("subscribed", notification => {
+        sub.unsubscribe()
+        assert.ok(notification)
+        assert.equal(notification.sequence,0)
+        done()
+      })
     });
     it('test subscription should give error', function(done) {
-       let sub = sepa.subscribe("selectfa ?a where {<integration> <tests> ?a}",{
-         next(val) {
-           sub.unsubscribe();
-           assert.ok(false,"This subscription should fail!")},
-         error(err)  {
-           done()
-         }
-       },
-       {host:config_host})
+      let sub = sepa.subscribe("selectfa ?a where {<integration> <tests> ?a}", { host: config_host })
+      
+      sub.on("error",() => {
+
+        done()
+      })
+      sub.on("notification",assert.ok.bind(false,"This subscription should fail"))
+      
+    });
+    it('should fire connection error', function(done) {
+      let sub = sepa.subscribe("selectfa ?a where {<integration> <tests> ?a}", { host: "invalidURI" })
+      
+      sub.on("connection-error",() => {
+        done()
+      })
+      sub.on("notification",assert.ok.bind(false,"This subscription should fail"))
+      
     });
     it('test notification with update', function(done) {
       sepa.update("delete{<integration> <tests> ?a}where{<integration> <tests> ?a}",
         {host:config_host}).then(
         (res)=>{
           assert.equal(200,res.status)
-          let sub = sepa.subscribe("select ?a where {<integration> <tests> ?a}",data => {
-             if(data.notification && data.notification.sequence == 0){
+            let sub = sepa.subscribe("select ?a where {<integration> <tests> ?a}", { host: config_host })
+            sub.on("notification", notification => {
+             if(notification.sequence == 0){
               sepa.update("insert data{<integration> <tests> '--hello--'}",
               {host:config_host}).then(
                   (res)=>{
                     assert.equal(200,res.status)
                   }
                 )
-             }else if (data.notification && data.notification.sequence > 0){
-              assert.equal(data.notification.addedResults.results.bindings[0].a.value,"--hello--")
+             }else{
+              assert.equal(notification.addedResults.results.bindings[0].a.value,"--hello--")
                 sub.unsubscribe()
                 done()
              }
-          },
-          {host:config_host})
+          })
+          
         }
       )
     });

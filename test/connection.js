@@ -8,91 +8,219 @@ const sinon = require('sinon')
 describe('Connection', function () {
     let fakeWs
     let connection  
-    before(() => {
+
+    beforeEach(() => {
         fakeWs = new Emitter()
         fakeWs.readyState = WebSocket.OPEN
         fakeWs.send = sinon.fake()
         fakeWs.close = sinon.fake()
-    });
+        // broswer methods
+        fakeWs.addEventListener = fakeWs.addListener
+        fakeWs.removeEventListener = fakeWs.removeListener
 
-    beforeEach(() => {
         connection = new Connection(fakeWs)
         fakeWs.send.resetHistory()
         fakeWs.close.resetHistory()
     });
-    
-    it('should notify the first notification', () => {
-        let callback = sinon.fake()
-        
-        connection.on("test",callback)
+    describe('Notification stream', () => {
+        it('should notify the first notification', () => {
+            let callback = sinon.fake()
 
-        connection.createSubscription({
-            subscribe:
+            let notStrem = connection.notificationStream({
+                subscribe:
                 {
-                    sparql : "fake",
-                    alias : 'test'
+                    sparql: "fake",
+                    alias: 'test'
                 }
-        })
+            })
 
-        assert(fakeWs.send.called,"Subscription request not sent")
-        fakeWs.emit("message",'{"notification":{"spuid":"spuid://test","alias":"test"}}')
-        assert(callback.calledOnce,"Callaback not called")
-    });
-    
-    it('should unsubscribe', () => {
-        let callback = sinon.fake()
-
-        connection.on("test", callback)
-
-        connection.createSubscription({
-            subscribe:
-            {
-                sparql: "fake",
-                alias: 'test'
-            }
-        })
-
-        fakeWs.emit("message", '{"notification":{"spuid":"spuid://test","alias":"test"}}')
-        connection.deleteSubscription('test')
-        fakeWs.emit("message", '{"unsubscribed":{"spuid":"spuid://test"}}')
-
-        assert(fakeWs.send.calledTwice, "Subscription request not sent")
-        assert(callback.calledTwice, "Callaback not called twice, missing unsubribe notification")
-    });
-    
-    it('should ignore listeners connection releted events', () => {
-        let callback = sinon.fake()
-
-        connection.on("test", callback)
-        connection.on("error",callback)
-        connection.on("newListener",callback)
-        connection.on("removeListener",callback)
+            notStrem.on("notification", callback)  
+            fakeWs.emit("message", { data: '{"notification":{"spuid":"spuid://test","alias":"test"}}' })
+            
+            assert(callback.calledOnce, "Callaback not called")
+        });
         
-        assert(connection.connectedClients === 1, "Connection client number is more than 1")
+        it('should polately accept bad json formatting', () => {
+            let callback = sinon.fake()
+            let errCallback = sinon.fake()
+
+            let notStrem = connection.notificationStream({
+                subscribe:
+                {
+                    sparql: "fake",
+                    alias: 'test'
+                }
+            })
+
+            notStrem.on("notification", callback)
+            notStrem.on("error", errCallback)  
+            fakeWs.emit("message", { data: '{"notification" bad json here :{"spuid":"spuid://test","alias":"test"}}' })
+            
+            assert(!callback.calledOnce, "Data callback shouldn't be called")
+            assert(errCallback.calledOnce, "Error callaback not called")
+
+        });
+
+        it('should notify the every notification', () => {
+            let callback = sinon.fake()
+
+            let notStrem = connection.notificationStream({
+                subscribe:
+                {
+                    sparql: "fake",
+                    alias: 'test'
+                }
+            })
+
+            notStrem.on("notification", callback)
+            
+            fakeWs.emit("message", { data: '{"notification":{"spuid":"spuid://test","alias":"test"}}' })
+            fakeWs.emit("message", { data: '{"notification":{"spuid":"spuid://test"}}' })
+            fakeWs.emit("message", { data: '{"notification":{"spuid":"spuid://test"}}' })
+            
+            assert(callback.calledThrice, "Notifications are not sent")
+        });
+
+        it('should discard other notifications on subscription', () => {
+            let callback = sinon.fake()
+
+            let notStrem = connection.notificationStream({
+                subscribe:
+                {
+                    sparql: "fake",
+                    alias: 'test'
+                }
+            })
+
+            notStrem.on("notification", callback)
+            
+            fakeWs.emit("message", { data: '{"notification":{"spuid":"spuid://test","alias":"not-test"}}' })
+            
+            assert(!callback.called, "Callaback called for wrong alias notification")
+        });
+
+        it('should discard other notifications interlived in streaming', () => {
+            let callback = sinon.fake()
+
+            let notStrem = connection.notificationStream({
+                subscribe:
+                {
+                    sparql: "fake",
+                    alias: 'test'
+                }
+            })
+
+            notStrem.on("notification", callback)
+            
+            fakeWs.emit("message", { data: '{"notification":{"spuid":"spuid://test","alias":"test"}}' })
+            fakeWs.emit("message", { data: '{"notification":{"spuid":"spuid://test"}}' })
+            fakeWs.emit("message", { data: '{"notification":{"spuid":"spuid://not-test","alias":"not-test"}}' })
+            fakeWs.emit("message", { data: '{"notification":{"spuid":"spuid://test"}}' })
+            fakeWs.emit("message", { data: '{"notification":{"spuid":"spuid://not-test"}}' })
+            
+            assert(callback.calledThrice, "Callaback called for wrong alias notification")
+        });
+
+        it('should notify both clients', () => {
+            let callback1 = sinon.fake()
+            let callback2 = sinon.fake()
+
+            let notStream1 = connection.notificationStream({
+                subscribe:
+                {
+                    sparql: "fake",
+                    alias: 'test'
+                }
+            })
+            let notStream2 = connection.notificationStream({
+                subscribe:
+                {
+                    sparql: "fake",
+                    alias: 'not-test'
+                }
+            })
+
+            notStream1.on("notification", callback1)
+            notStream2.on("notification", callback2)
+            
+            fakeWs.emit("message", { data: '{"notification":{"spuid":"spuid://test","alias":"test"}}' })
+            fakeWs.emit("message", { data: '{"notification":{"spuid":"spuid://test"}}' })
+            fakeWs.emit("message", { data: '{"notification":{"spuid":"spuid://not-test","alias":"not-test"}}' })
+            fakeWs.emit("message", { data: '{"notification":{"spuid":"spuid://test"}}' })
+            fakeWs.emit("message", { data: '{"notification":{"spuid":"spuid://not-test"}}' })
+            
+            assert.equal(callback1.callCount,3, "First callback not called")
+            assert.equal(callback2.callCount,2, "Second callback not called")
+        });
+
+        it('should notify the error notification', () => {
+            let callback = sinon.fake()
+
+            let notStrem = connection.notificationStream({
+                subscribe:
+                {
+                    sparql: "fake",
+                    alias: 'test'
+                }
+            })
+
+            notStrem.on("notification", callback)
+
+            fakeWs.emit("message", {data: '{"error": "unauthorized_client","error_description": "Client is not authorized","status_code": 401,"alias":"test"}' })
+            assert(callback.calledOnce, "Callaback not called")
+        });
+
+        it('should notify the unsubscribe notification', () => {
+            let callback = sinon.fake()
+
+            let notStrem = connection.notificationStream({
+                subscribe:
+                {
+                    sparql: "fake",
+                    alias: 'test'
+                }
+            })
+
+            notStrem.on("notification", callback)
+
+           
+            fakeWs.emit("message", { data: '{"notification":{"spuid":"sepa://test","alias":"test"}}' })
+            callback.resetHistory()
+            fakeWs.emit("message", {data: '{"unsubscribed":{"spuid": "sepa://test"}}' })
+            assert(callback.calledOnce, "Callaback not called after unsubscribe")
+        });
+
+        it('should close the notification stream', () => {
+            let callback = sinon.fake()
+
+            let notStrem = connection.notificationStream({
+                subscribe:
+                {
+                    sparql: "fake",
+                    alias: 'test'
+                }
+            })
+
+            notStrem.on("notification", callback)
+
+            notStrem.close()
+            fakeWs.emit("message", { data: '{"notification":{"spuid":"spuid://test","alias":"test"}}' })
+            assert(!callback.calledOnce, "Callaback called on notification")
+            fakeWs.emit("message", { data: '{"error":{}}' })
+            assert(!callback.calledOnce, "Callaback called on error")
+
+            assert.equal(fakeWs.listenerCount("message"),0,"Web socket listeners are still connected")
+        });
     });
-    
-    it('should ignore not registered listeners', () => {
-        let callback = sinon.fake()
 
-        connection.on("test", callback)
-        connection.on("error", callback)
-
-        assert(connection.connectedClients === 1, "Connection client number is more than 1")
-        
-        connection.removeListener("fake",callback)
-        connection.removeListener("close",callback)
-
-        assert(connection.connectedClients === 1, "Connection client number is more than 1")
-    });
-
-    it('should close the connection', () => {
+    it('should close the underling websocket connection', () => {
         let callback = sinon.fake()
         let closeCallback = sinon.fake()
 
         connection.on("test", callback)
         connection.on("close",closeCallback)
 
-        connection.createSubscription({
+        let notStream = connection.notificationStream({
             subscribe:
             {
                 sparql: "fake",
@@ -100,86 +228,87 @@ describe('Connection', function () {
             }
         })
 
-        fakeWs.emit("message", '{"notification":{"spuid":"spuid://test","alias":"test"}}')
-        connection.deleteSubscription('test')
-        fakeWs.emit("message", '{"unsubscribed":{"spuid":"spuid://test"}}')
-        connection.removeListener("test",callback)
+        notStream.close()
 
-        assert(fakeWs.send.calledTwice, "Subscription request not sent")
-        assert(callback.calledTwice, "Callaback not called twice, missing unsubribe notification")
+        assert(!callback.called, "Callaback callled")
         assert(fakeWs.close.calledOnce, "Connection not closed")
         
         fakeWs.emit("close")
         assert(closeCallback.called,"close callaback not called")
 
     });
-
-    it('should handle a notification stream', () => {
+    
+    it('should have the correct number of connected clients', () => {
         let callback = sinon.fake()
-        
-        connection.on("test",callback)
+        let closeCallback = sinon.fake()
 
-        connection.createSubscription({
+        connection.on("test", callback)
+        connection.on("close",closeCallback)
+
+        let notStream1 = connection.notificationStream({
+            subscribe:
+            {
+                sparql: "fake",
+                alias: 'test'
+            }
+        })
+        let notStream2 = connection.notificationStream({
+            subscribe:
+            {
+                sparql: "fake",
+                alias: 'test'
+            }
+        })
+
+        let notStream3 = connection.notificationStream({
+            subscribe:
+            {
+                sparql: "fake",
+                alias: 'test'
+            }
+        })
+
+        assert.equal(connection.connectedClients,3,"Wrong connect client number")
+        
+        notStream1.close()
+
+        assert.equal(connection.connectedClients, 2, "Wrong connect client number after closing one")
+
+    });
+
+    it('should send the subscription after socket opening', (done) => {
+        fakeWs.readyState = WebSocket.CONNECTING
+        
+        connection.notificationStream({
+            subscribe:
+            {
+                sparql: "fake",
+                alias: 'test'
+            }
+        })
+        
+        assert(!fakeWs.send.called,"send called before opening")
+        
+        process.nextTick(() => {
+            fakeWs.emit("open")
+            assert(fakeWs.send.called, "send called before opening")
+            done()
+        })
+
+    });
+
+    it('should send the two subscription after socket opening', (done) => {
+        fakeWs.readyState = WebSocket.CONNECTING
+        
+
+        connection.notificationStream({
             subscribe:
                 {
                     sparql : "fake",
                     alias : 'test'
                 }
         })
-
-        assert(fakeWs.send.called,"Subscription request not sent")
-
-        fakeWs.emit("message",'{"notification":{"spuid":"spuid://test","alias":"test"}}')
-        fakeWs.emit("message", '{"notification":{"spuid":"spuid://test","alias":"test"}}')
-        
-        assert(callback.calledTwice,"Callaback not called twice")
-    });
-
-    it('should handle different aliases stream', () => {
-        let callbackOne = sinon.fake()
-        let callbackTwo = sinon.fake()
-        
-        connection.on("test1",callbackOne)
-        connection.on("test2",callbackTwo)
-
-        connection.createSubscription({
-            subscribe:
-                {
-                    sparql : "fake",
-                    alias : 'test1'
-                }
-        })
-        
-        connection.createSubscription({
-            subscribe:
-                {
-                    sparql : "fake",
-                    alias : 'test2'
-                }
-        })
-
-        fakeWs.emit("message",'{"notification":{"spuid":"spuid://test1","alias":"test1"}}')
-        fakeWs.emit("message", '{"notification":{"spuid":"spuid://test2","alias":"test2"}}')
-        
-        let argumentOne = { 
-            notification: { spuid: "spuid://test1", alias: "test1" } 
-        }
-
-        let argumentTwo = { 
-            notification: { spuid: "spuid://test2", alias: "test2" } 
-        }
-        
-        assert(callbackOne.calledWith(sinon.match(argumentOne)), "Callaback one not called or called with wrong arguments: " + callbackOne.lastCall.args)
-        assert(callbackTwo.calledWith(sinon.match(argumentTwo)), "Callaback one not called or called with wrong arguments: " + callbackTwo.lastCall.args)
-        
-
-    });
-
-    it('should send the subscription after socket opening', () => {
-        fakeWs.readyState = WebSocket.CONNECTING
-        
-
-        connection.createSubscription({
+        connection.notificationStream({
             subscribe:
                 {
                     sparql : "fake",
@@ -188,32 +317,11 @@ describe('Connection', function () {
         })
 
         assert(!fakeWs.send.called,"send called before opening")
-        fakeWs.emit("open")
-        assert(fakeWs.send.calledOnce,"send not called")
-    });
-
-    it('should send the two subscription after socket opening', () => {
-        fakeWs.readyState = WebSocket.CONNECTING
-        
-
-        connection.createSubscription({
-            subscribe:
-                {
-                    sparql : "fake",
-                    alias : 'test'
-                }
+        process.nextTick(() => {
+            fakeWs.emit("open")
+            assert(fakeWs.send.calledTwice, "send called before opening")
+            done()
         })
-        connection.createSubscription({
-            subscribe:
-                {
-                    sparql : "fake",
-                    alias : 'test'
-                }
-        })
-
-        assert(!fakeWs.send.called,"send called before opening")
-        fakeWs.emit("open")
-        assert(fakeWs.send.calledTwice,"send not called twice")
     });
 
     afterEach(() => {

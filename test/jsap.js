@@ -110,7 +110,7 @@ describe('Jsap', function() {
     })
 
     it("Check override configuration", function () {
-      jsap.api.subscribe = (query, handler, config) => {
+      jsap.api.subscribe = (query, config) => {
         assert.equal(config.sparql11seprotocol.protocol, "wss")
         assert.equal(config.host, "other.host.it")
       }

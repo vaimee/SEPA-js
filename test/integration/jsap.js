@@ -36,28 +36,29 @@ describe('Integration tests for jsap api', function() {
     });
 
     it('test consumer', function(done) {
-       let res = jsap.Consumers.simple({},data => {
-         assert.ok(data.notification)
-         assert.equal(data.notification.sequence,0)
-         res.unsubscribe()
+       let consumer = jsap.Consumers.simple({})
+       consumer.on("notification", 
+       data => {
+         assert.equal(data.sequence,0)
+         consumer.unsubscribe()
          done()
        })
     });
 
     it('test consumer with bindings default', function(done) {
-       let res = jsap.Consumers.defaultArgs({},data => {
-         assert.ok(data.notification)
-         assert.equal(data.notification.sequence,0)
-         res.unsubscribe()
+       let consumer = jsap.Consumers.defaultArgs({})
+       consumer.on("notification" ,data => {
+         assert.equal(data.sequence,0)
+         consumer.unsubscribe()
          done()
        })
     });
 
     it('test consumer with bindings override', function(done) {
-       let res = jsap.Consumers.defaultArgs({a:"jsap"},data => {
-         assert.ok(data.notification)
-         assert.equal(data.notification.sequence,0)
-         res.unsubscribe()
+       let consumer = jsap.Consumers.defaultArgs({a:"jsap"})
+       consumer.on("notification",data => {
+         assert.equal(data.sequence,0)
+         consumer.unsubscribe()
          done()
        })
     });
@@ -65,20 +66,20 @@ describe('Integration tests for jsap api', function() {
     it('test consumer - producer notifcation', function(done) {
        jsap.deleteIntgration().then(res =>{
          assert.equal(200,res.status)
-         let sub = jsap.integration({},data =>{
-           if(data.notification && data.notification.sequence == 0){
+         let sub = jsap.integration({})
+         sub.on("notification",data =>{
+           if(data.sequence == 0){
              jsap.notification().then(res =>{
                assert.equal(200,res.status)
              })
            }
            // skip the confirmation message
-           if(data.notification && data.notification.sequence > 0){
-             assert.equal(data.notification.addedResults.results.bindings[0].c.value,"Hello World")
+           if(data.sequence > 0){
+             assert.equal(data.addedResults.results.bindings[0].c.value,"Hello World")
              sub.unsubscribe()
              done()
            }
          })
-
        })
     });
 })
