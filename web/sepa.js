@@ -2,6 +2,7 @@
 module.exports = require('./lib/core');
 
 },{"./lib/core":3}],2:[function(require,module,exports){
+(function (process){
 const EventEmitter = require("events").EventEmitter
 const WebSocket = require("isomorphic-ws")
 
@@ -9,81 +10,102 @@ class Connection extends EventEmitter {
 
     constructor(websocket) {
         super()
-
-        this.aliasMapping = new Map()
-        this.reverseAliasMapping = new Map()
-
         this.ws = websocket
-        this.connectedClients = 0
+        this.__connectedClients = 0
+    }
 
-        this.on("newListener", ((event) => {
-            //Exclude connection managment events
-            //Count only sparql subscription listeners
-            if (event !== "close" && event !== "error" && event !== "removeListener" && event !== "newListener"){
-                this.connectedClients++
+    notificationStream(request) {
+        let json = JSON.stringify(request)
+        //Wait next tick to send subscriptions and let the client
+        //subscribe to the notifications
+        process.nextTick((() => {
+            if (this.ws.readyState === WebSocket.CONNECTING) {
+                let callback = (() => {
+                    this.ws.removeEventListener("open", callback)
+                    this.ws.send(json)
+                }).bind(this)
+
+                this.ws.addEventListener("open", callback)
+            } else {
+                this.ws.send(json)
             }
         }).bind(this))
 
-        this.on("removeListener", ((event) => {
-            //Discard fake or system  listener
-            if (this.reverseAliasMapping.has(event)){  
-                this.connectedClients--
-            }
+        return new NotificationStream(this,request.subscribe.alias)
+    }
+    
+    get connectedClients() {
+        return this._connectedClients
+    }
+    
+    set _connectedClients(value){
+        this.__connectedClients = value
+        if(value <= 0){
+            this.emit("close")
+            this.ws.close()
+        }
+    }
 
-            if (this.connectedClients <= 0) {
-                this.emit("close")
-                this.ws.close()
-            }
+    get _connectedClients ()  {
+        return this.__connectedClients
+    }
 
-        }).bind(this))
+}
 
-        //reset connectclients after removeListener handler
-        this.connectedClients = 0
+class NotificationStream extends EventEmitter{
 
-        this.ws.on("message", data => {
-            data = JSON.parse(data)
-            data["toString"] = () => { return JSON.stringify(data) }
+    constructor(connection,alias) {
+        super()
+        this.ws = connection.ws
+        this.alias = alias
+       
+        this._connection = connection   
+        this._connection._connectedClients++
+        
+        this._dataHandler = data => {
+            try {
+                data = JSON.parse(data.data)
+                data["toString"] = () => { return JSON.stringify(data) }
 
-
-            if (data.error) {
-                //register alias for correct listener deregistration
-                this.reverseAliasMapping.set(data.alias, "")
-                this.emit(data.alias, data)
-            } else if (data.unsubscribed){
-                this.emit(this.aliasMapping.get(data.unsubscribed.spuid), data)                
-            }else{
-                if (data.notification.alias) {
-                    this.aliasMapping.set(data.notification.spuid, data.notification.alias)
-                    this.reverseAliasMapping.set(data.notification.alias, data.notification.spuid)
+                if (data.notification &&
+                    data.notification.alias &&
+                    data.notification.alias === this.alias) {
+                    this.spuid = data.notification.spuid
                 }
-                this.emit(this.aliasMapping.get(data.notification.spuid), data)
+
+                if ((data.error && data.alias === alias) ||
+                    (data.notification && data.notification.spuid === this.spuid) ||
+                    (data.unsubscribed && data.unsubscribed.spuid === this.spuid)) {
+                    this.emit("notification", data)
+                }
+            } catch (error) {
+                this.emit("error",error)   
             }
-        })
+        }
 
-        this.ws.on("error", (err => {
-            this.emit("error", err)
-        }).bind(this))
+        this._errorHandler = this.emit.bind(this, "error")
+        
+        this.ws.addEventListener("message", this._dataHandler)
+
+        this.ws.addEventListener("error", this._errorHandler)
     }
 
-    createSubscription(request) {
-        if (this.ws.readyState === WebSocket.CONNECTING) {
-            this.ws.once("open", (() => { this.ws.send(JSON.stringify(request)) }).bind(this))
-        }else{
-            this.ws.send(JSON.stringify(request))
-        }
+    send(data){
+        //TODO: test send
+        this.ws.send(JSON.stringify(data))
     }
-
-    deleteSubscription(alias) {
-        if (this.ws.readyState !== WebSocket.CLOSED && this.ws.readyState !== WebSocket.CLOSING){
-            let unsubscribe = { unsubscribe: { spuid: this.reverseAliasMapping.get(alias) } }
-            this.ws.send(JSON.stringify(unsubscribe))
-        }
+    
+    close(){
+        this.ws.removeEventListener("error", this._errorHandler)
+        this.ws.removeEventListener("message", this._dataHandler)
+        this._connection._connectedClients--
     }
 
 }
 
 module.exports = Connection
-},{"events":35,"isomorphic-ws":37}],3:[function(require,module,exports){
+}).call(this,require('_process'))
+},{"_process":39,"events":36,"isomorphic-ws":38}],3:[function(require,module,exports){
 const defaults = require('./defaults');
 const SEPA = require('./sepa');
 const jsap = require('./jsap');
@@ -182,14 +204,14 @@ class Jsap {
     })
   }
 
-  subscribe(key,bindings,handler){
+  subscribe(key,bindings){
     let query = this.queries[key].sparql
     let binds = trasformBindings(bindings,this.queries[key].forcedBindings)
     let config = (({ host, sparql11seprotocol }) => (prune({ host, sparql11seprotocol })))(this.queries[key])
     
     query = this.bench.sparql(query,binds)
     
-    return this.api.subscribe(query,handler,config)
+    return this.api.subscribe(query,config)
   }
 
   update(key,bindings){
@@ -223,7 +245,7 @@ class Jsap {
   get Consumers(){
     let result = {}
     Object.keys(this.queries).forEach(k =>{
-      result[k] = (binds,handler) => { return this.subscribe(k,binds,handler)}
+      result[k] = (binds) => { return this.subscribe(k,binds)}
     })
     return result;
   }
@@ -300,6 +322,7 @@ const WebSocket = require('isomorphic-ws');
 const utils = require('./utils');
 const Observable = require('zen-observable');
 const Connection = require('./connection')
+const Subscription = require('./subscription')
 
 
 class SEPA {
@@ -346,7 +369,7 @@ class SEPA {
     })
   }
 
-  subscribe (query,observer,config,alias) {
+  subscribe (query,config,alias) {
     let sub_uri = this.subscribeURI
     if ( config !== undefined){
       let temp = utils.mergeWithDefaults(this.config,config)
@@ -363,46 +386,97 @@ class SEPA {
       connection.on("close",(()=>{this.connectionPool.delete(sub_uri)}).bind(this))
     }
 
-    let observable = new Observable(obs => {
-      //Math random esure that the alias is unique but is not secure (cripto)
-      alias = alias ? alias : Math.random().toString(26).slice(2)
-      let request = {
-        subscribe : {
-          sparql : query,
-          alias: alias
-        }
-      }
-
-      let handler = function (notification) {
-        
-        if (notification.unsubscribed) {
-          obs.complete(notification.unsubscribed.spuid)
-          connection.removeListener(alias,handler)
-        } else if (notification.error){
-          connection.removeListener(alias, handler)
-          obs.error(notification)
-        }else{
-          obs.next(notification)
-        }
-      }
-
-      connection.on(alias,handler)
-      connection.on("error",obs.error)
-
-      connection.createSubscription(request)
-
-      return () => {
-        connection.deleteSubscription(alias)
-      }
-    });
-
-    return observable.subscribe(observer)
+    return new Subscription(query,connection,alias)
   }
 }
 
 module.exports = SEPA;
 
-},{"./connection":2,"./utils":8,"axios":9,"isomorphic-ws":37,"zen-observable":48}],8:[function(require,module,exports){
+},{"./connection":2,"./subscription":8,"./utils":9,"axios":10,"isomorphic-ws":38,"zen-observable":49}],8:[function(require,module,exports){
+const EventEmitter = require("events").EventEmitter
+const partial = require("util").partial
+
+// EVENTS
+const NOTIFICATION = "notification"
+const ADDED        = "added"
+const REMOVED      = "removed"
+const SUBSCRIBED   = "subscribed"
+const ERROR        = "error"
+const UNSUBSCRIBED = "unsubscribed"
+const CONNECTERROR = "connection-error"
+
+class Subscription extends EventEmitter {
+    
+    constructor(query,connection,alias){
+        super()
+        this._connection = connection
+        this._unsubscribed = false;
+        this._query = query
+        //Math random ensure that the alias is unique but is not secure (cripto)
+        this._alias = alias ? alias : Math.random().toString(26).slice(2)
+        
+        let handler = ((notification) => {
+            if (notification.unsubscribed) {
+                this._stream.close()
+                this.emit(UNSUBSCRIBED, notification)
+                this.removeAllListeners()
+                this.setMaxListeners(0)
+                this._unsubscribed = true;
+            } else if (notification.error) {
+                this.unsubscribe()
+                this._stream.close()
+                this.emit(ERROR, notification)
+                this.removeAllListeners()
+                this.setMaxListeners(0)
+                this._unsubscribed = true;
+            } else {
+                notification = notification.notification
+                if(notification.sequence === 0){
+                    this.emit(SUBSCRIBED,notification)
+                }
+                this.emit(NOTIFICATION, notification)
+                if (Object.keys(notification.addedResults).length)    this.emit(ADDED, notification.addedResults)
+                if (Object.keys(notification.removedResults).length)  this.emit(REMOVED, notification.removedResults)
+            }
+        })
+        
+        this._stream = connection.notificationStream( {
+            subscribe: {
+                sparql: query,
+                alias: this._alias
+            }
+        })
+
+        this._stream.on("notification", handler.bind(this))
+
+        this._stream.on("error", ((err) => {
+            this._stream.close()
+            this.emit(CONNECTERROR,err)
+        }))
+    }
+
+    get alias() {
+        return this._alias
+    }
+
+    get query(){
+        return this._query
+    }
+    
+    unsubscribe(){
+        if(this._unsubscribed){
+            throw new Error("Subscription already unsubscribed")
+        }
+        this._stream.send({ unsubscribe : { spuid : this._stream.spuid}})
+    }
+
+    kill(){
+        this._scream.close()
+    }
+}
+
+module.exports = Subscription
+},{"events":36,"util":48}],9:[function(require,module,exports){
 const { Url } = require('url');
 const util = require('util');
 const deepmerge = require('deepmerge')
@@ -437,9 +511,9 @@ module.exports.mergeWithDefaults = function (defaults,obj) {
   return deepmerge( defaults, obj)
 }
 
-},{"deepmerge":34,"url":43,"util":47}],9:[function(require,module,exports){
+},{"deepmerge":35,"url":44,"util":48}],10:[function(require,module,exports){
 module.exports = require('./lib/axios');
-},{"./lib/axios":11}],10:[function(require,module,exports){
+},{"./lib/axios":12}],11:[function(require,module,exports){
 (function (process){
 'use strict';
 
@@ -623,7 +697,7 @@ module.exports = function xhrAdapter(config) {
 };
 
 }).call(this,require('_process'))
-},{"../core/createError":17,"./../core/settle":20,"./../helpers/btoa":24,"./../helpers/buildURL":25,"./../helpers/cookies":27,"./../helpers/isURLSameOrigin":29,"./../helpers/parseHeaders":31,"./../utils":33,"_process":38}],11:[function(require,module,exports){
+},{"../core/createError":18,"./../core/settle":21,"./../helpers/btoa":25,"./../helpers/buildURL":26,"./../helpers/cookies":28,"./../helpers/isURLSameOrigin":30,"./../helpers/parseHeaders":32,"./../utils":34,"_process":39}],12:[function(require,module,exports){
 'use strict';
 
 var utils = require('./utils');
@@ -677,7 +751,7 @@ module.exports = axios;
 // Allow use of default import syntax in TypeScript
 module.exports.default = axios;
 
-},{"./cancel/Cancel":12,"./cancel/CancelToken":13,"./cancel/isCancel":14,"./core/Axios":15,"./defaults":22,"./helpers/bind":23,"./helpers/spread":32,"./utils":33}],12:[function(require,module,exports){
+},{"./cancel/Cancel":13,"./cancel/CancelToken":14,"./cancel/isCancel":15,"./core/Axios":16,"./defaults":23,"./helpers/bind":24,"./helpers/spread":33,"./utils":34}],13:[function(require,module,exports){
 'use strict';
 
 /**
@@ -698,7 +772,7 @@ Cancel.prototype.__CANCEL__ = true;
 
 module.exports = Cancel;
 
-},{}],13:[function(require,module,exports){
+},{}],14:[function(require,module,exports){
 'use strict';
 
 var Cancel = require('./Cancel');
@@ -757,14 +831,14 @@ CancelToken.source = function source() {
 
 module.exports = CancelToken;
 
-},{"./Cancel":12}],14:[function(require,module,exports){
+},{"./Cancel":13}],15:[function(require,module,exports){
 'use strict';
 
 module.exports = function isCancel(value) {
   return !!(value && value.__CANCEL__);
 };
 
-},{}],15:[function(require,module,exports){
+},{}],16:[function(require,module,exports){
 'use strict';
 
 var defaults = require('./../defaults');
@@ -845,7 +919,7 @@ utils.forEach(['post', 'put', 'patch'], function forEachMethodWithData(method) {
 
 module.exports = Axios;
 
-},{"./../defaults":22,"./../utils":33,"./InterceptorManager":16,"./dispatchRequest":18}],16:[function(require,module,exports){
+},{"./../defaults":23,"./../utils":34,"./InterceptorManager":17,"./dispatchRequest":19}],17:[function(require,module,exports){
 'use strict';
 
 var utils = require('./../utils');
@@ -899,7 +973,7 @@ InterceptorManager.prototype.forEach = function forEach(fn) {
 
 module.exports = InterceptorManager;
 
-},{"./../utils":33}],17:[function(require,module,exports){
+},{"./../utils":34}],18:[function(require,module,exports){
 'use strict';
 
 var enhanceError = require('./enhanceError');
@@ -919,7 +993,7 @@ module.exports = function createError(message, config, code, request, response) 
   return enhanceError(error, config, code, request, response);
 };
 
-},{"./enhanceError":19}],18:[function(require,module,exports){
+},{"./enhanceError":20}],19:[function(require,module,exports){
 'use strict';
 
 var utils = require('./../utils');
@@ -1007,7 +1081,7 @@ module.exports = function dispatchRequest(config) {
   });
 };
 
-},{"../cancel/isCancel":14,"../defaults":22,"./../helpers/combineURLs":26,"./../helpers/isAbsoluteURL":28,"./../utils":33,"./transformData":21}],19:[function(require,module,exports){
+},{"../cancel/isCancel":15,"../defaults":23,"./../helpers/combineURLs":27,"./../helpers/isAbsoluteURL":29,"./../utils":34,"./transformData":22}],20:[function(require,module,exports){
 'use strict';
 
 /**
@@ -1030,7 +1104,7 @@ module.exports = function enhanceError(error, config, code, request, response) {
   return error;
 };
 
-},{}],20:[function(require,module,exports){
+},{}],21:[function(require,module,exports){
 'use strict';
 
 var createError = require('./createError');
@@ -1058,7 +1132,7 @@ module.exports = function settle(resolve, reject, response) {
   }
 };
 
-},{"./createError":17}],21:[function(require,module,exports){
+},{"./createError":18}],22:[function(require,module,exports){
 'use strict';
 
 var utils = require('./../utils');
@@ -1080,7 +1154,7 @@ module.exports = function transformData(data, headers, fns) {
   return data;
 };
 
-},{"./../utils":33}],22:[function(require,module,exports){
+},{"./../utils":34}],23:[function(require,module,exports){
 (function (process){
 'use strict';
 
@@ -1180,7 +1254,7 @@ utils.forEach(['post', 'put', 'patch'], function forEachMethodWithData(method) {
 module.exports = defaults;
 
 }).call(this,require('_process'))
-},{"./adapters/http":10,"./adapters/xhr":10,"./helpers/normalizeHeaderName":30,"./utils":33,"_process":38}],23:[function(require,module,exports){
+},{"./adapters/http":11,"./adapters/xhr":11,"./helpers/normalizeHeaderName":31,"./utils":34,"_process":39}],24:[function(require,module,exports){
 'use strict';
 
 module.exports = function bind(fn, thisArg) {
@@ -1193,7 +1267,7 @@ module.exports = function bind(fn, thisArg) {
   };
 };
 
-},{}],24:[function(require,module,exports){
+},{}],25:[function(require,module,exports){
 'use strict';
 
 // btoa polyfill for IE<10 courtesy https://github.com/davidchambers/Base64.js
@@ -1231,7 +1305,7 @@ function btoa(input) {
 
 module.exports = btoa;
 
-},{}],25:[function(require,module,exports){
+},{}],26:[function(require,module,exports){
 'use strict';
 
 var utils = require('./../utils');
@@ -1299,7 +1373,7 @@ module.exports = function buildURL(url, params, paramsSerializer) {
   return url;
 };
 
-},{"./../utils":33}],26:[function(require,module,exports){
+},{"./../utils":34}],27:[function(require,module,exports){
 'use strict';
 
 /**
@@ -1315,7 +1389,7 @@ module.exports = function combineURLs(baseURL, relativeURL) {
     : baseURL;
 };
 
-},{}],27:[function(require,module,exports){
+},{}],28:[function(require,module,exports){
 'use strict';
 
 var utils = require('./../utils');
@@ -1370,7 +1444,7 @@ module.exports = (
   })()
 );
 
-},{"./../utils":33}],28:[function(require,module,exports){
+},{"./../utils":34}],29:[function(require,module,exports){
 'use strict';
 
 /**
@@ -1386,7 +1460,7 @@ module.exports = function isAbsoluteURL(url) {
   return /^([a-z][a-z\d\+\-\.]*:)?\/\//i.test(url);
 };
 
-},{}],29:[function(require,module,exports){
+},{}],30:[function(require,module,exports){
 'use strict';
 
 var utils = require('./../utils');
@@ -1456,7 +1530,7 @@ module.exports = (
   })()
 );
 
-},{"./../utils":33}],30:[function(require,module,exports){
+},{"./../utils":34}],31:[function(require,module,exports){
 'use strict';
 
 var utils = require('../utils');
@@ -1470,7 +1544,7 @@ module.exports = function normalizeHeaderName(headers, normalizedName) {
   });
 };
 
-},{"../utils":33}],31:[function(require,module,exports){
+},{"../utils":34}],32:[function(require,module,exports){
 'use strict';
 
 var utils = require('./../utils');
@@ -1525,7 +1599,7 @@ module.exports = function parseHeaders(headers) {
   return parsed;
 };
 
-},{"./../utils":33}],32:[function(require,module,exports){
+},{"./../utils":34}],33:[function(require,module,exports){
 'use strict';
 
 /**
@@ -1554,7 +1628,7 @@ module.exports = function spread(callback) {
   };
 };
 
-},{}],33:[function(require,module,exports){
+},{}],34:[function(require,module,exports){
 'use strict';
 
 var bind = require('./helpers/bind');
@@ -1859,7 +1933,7 @@ module.exports = {
   trim: trim
 };
 
-},{"./helpers/bind":23,"is-buffer":36}],34:[function(require,module,exports){
+},{"./helpers/bind":24,"is-buffer":37}],35:[function(require,module,exports){
 (function (global, factory) {
 	typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
 	typeof define === 'function' && define.amd ? define(factory) :
@@ -1958,7 +2032,7 @@ return deepmerge_1;
 
 })));
 
-},{}],35:[function(require,module,exports){
+},{}],36:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -2479,7 +2553,7 @@ function functionBindPolyfill(context) {
   };
 }
 
-},{}],36:[function(require,module,exports){
+},{}],37:[function(require,module,exports){
 /*!
  * Determine if an object is a Buffer
  *
@@ -2502,11 +2576,11 @@ function isSlowBuffer (obj) {
   return typeof obj.readFloatLE === 'function' && typeof obj.slice === 'function' && isBuffer(obj.slice(0, 0))
 }
 
-},{}],37:[function(require,module,exports){
+},{}],38:[function(require,module,exports){
 (function (global){
 module.exports = global.WebSocket
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],38:[function(require,module,exports){
+},{}],39:[function(require,module,exports){
 // shim for using process in browser
 var process = module.exports = {};
 
@@ -2692,7 +2766,7 @@ process.chdir = function (dir) {
 };
 process.umask = function() { return 0; };
 
-},{}],39:[function(require,module,exports){
+},{}],40:[function(require,module,exports){
 (function (global){
 /*! https://mths.be/punycode v1.4.1 by @mathias */
 ;(function(root) {
@@ -3229,7 +3303,7 @@ process.umask = function() { return 0; };
 }(this));
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],40:[function(require,module,exports){
+},{}],41:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -3315,7 +3389,7 @@ var isArray = Array.isArray || function (xs) {
   return Object.prototype.toString.call(xs) === '[object Array]';
 };
 
-},{}],41:[function(require,module,exports){
+},{}],42:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -3402,13 +3476,13 @@ var objectKeys = Object.keys || function (obj) {
   return res;
 };
 
-},{}],42:[function(require,module,exports){
+},{}],43:[function(require,module,exports){
 'use strict';
 
 exports.decode = exports.parse = require('./decode');
 exports.encode = exports.stringify = require('./encode');
 
-},{"./decode":40,"./encode":41}],43:[function(require,module,exports){
+},{"./decode":41,"./encode":42}],44:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -4142,7 +4216,7 @@ Url.prototype.parseHost = function() {
   if (host) this.hostname = host;
 };
 
-},{"./util":44,"punycode":39,"querystring":42}],44:[function(require,module,exports){
+},{"./util":45,"punycode":40,"querystring":43}],45:[function(require,module,exports){
 'use strict';
 
 module.exports = {
@@ -4160,7 +4234,7 @@ module.exports = {
   }
 };
 
-},{}],45:[function(require,module,exports){
+},{}],46:[function(require,module,exports){
 if (typeof Object.create === 'function') {
   // implementation from standard node.js 'util' module
   module.exports = function inherits(ctor, superCtor) {
@@ -4185,14 +4259,14 @@ if (typeof Object.create === 'function') {
   }
 }
 
-},{}],46:[function(require,module,exports){
+},{}],47:[function(require,module,exports){
 module.exports = function isBuffer(arg) {
   return arg && typeof arg === 'object'
     && typeof arg.copy === 'function'
     && typeof arg.fill === 'function'
     && typeof arg.readUInt8 === 'function';
 }
-},{}],47:[function(require,module,exports){
+},{}],48:[function(require,module,exports){
 (function (process,global){
 // Copyright Joyent, Inc. and other Node contributors.
 //
@@ -4782,10 +4856,10 @@ function hasOwnProperty(obj, prop) {
 }
 
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./support/isBuffer":46,"_process":38,"inherits":45}],48:[function(require,module,exports){
+},{"./support/isBuffer":47,"_process":39,"inherits":46}],49:[function(require,module,exports){
 module.exports = require('./lib/Observable.js').Observable;
 
-},{"./lib/Observable.js":49}],49:[function(require,module,exports){
+},{"./lib/Observable.js":50}],50:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
