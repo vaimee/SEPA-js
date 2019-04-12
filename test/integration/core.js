@@ -18,12 +18,18 @@ describe('Integration tests for api', function() {
         assert.equal(notification.sequence,0)
         done()
       })
+      sub.on("error", (e) => {
+        done(e)
+      })
+      sub.on("connection-error",(e) => {
+        done(e)
+      })
     });
     it('test subscription should give error', function(done) {
       let sub = sepa.subscribe("selectfa ?a where {<integration> <tests> ?a}", { host: config_host })
       
       sub.on("error",() => {
-
+        sub.kill()
         done()
       })
       sub.on("notification",assert.ok.bind(false,"This subscription should fail"))
