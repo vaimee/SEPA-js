@@ -104,7 +104,7 @@ describe('Subscription', () => {
         fakeNotificationStream.emit("notification", {error: { }})
         
         assert(callback.called,"Unsubscribe not called")
-        assert(fakeNotificationStream.close.called, "Uderlining streaming not closed after succes error")
+        assert(!fakeNotificationStream.close.called, "Uderlining streaming closed after error")
         assert(fakeNotificationStream.send.called,"Unsubscribe not called after error event")
         assert.equal(subtest.listenerCount(), 0, "Subscription listeners are not cleaned")
 
