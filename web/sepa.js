@@ -1,4 +1,4 @@
-(function(f){if(typeof exports==="object"&&typeof module!=="undefined"){module.exports=f()}else if(typeof define==="function"&&define.amd){define([],f)}else{var g;if(typeof window!=="undefined"){g=window}else if(typeof global!=="undefined"){g=global}else if(typeof self!=="undefined"){g=self}else{g=this}g.Sepajs = f()}})(function(){var define,module,exports;return (function(){function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s}return e})()({1:[function(require,module,exports){
+(function(f){if(typeof exports==="object"&&typeof module!=="undefined"){module.exports=f()}else if(typeof define==="function"&&define.amd){define([],f)}else{var g;if(typeof window!=="undefined"){g=window}else if(typeof global!=="undefined"){g=global}else if(typeof self!=="undefined"){g=self}else{g=this}g.Sepajs = f()}})(function(){var define,module,exports;return (function(){function r(e,n,t){function o(i,f){if(!n[i]){if(!e[i]){var c="function"==typeof require&&require;if(!f&&c)return c(i,!0);if(u)return u(i,!0);var a=new Error("Cannot find module '"+i+"'");throw a.code="MODULE_NOT_FOUND",a}var p=n[i]={exports:{}};e[i][0].call(p.exports,function(r){var n=e[i][1][r];return o(n||r)},p,p.exports,r,e,n,t)}return n[i].exports}for(var u="function"==typeof require&&require,i=0;i<t.length;i++)o(t[i]);return o}return r})()({1:[function(require,module,exports){
 module.exports = require('./lib/core');
 
 },{"./lib/core":3}],2:[function(require,module,exports){
@@ -105,7 +105,7 @@ class NotificationStream extends EventEmitter{
 
 module.exports = Connection
 }).call(this,require('_process'))
-},{"_process":39,"events":36,"isomorphic-ws":38}],3:[function(require,module,exports){
+},{"_process":40,"events":36,"isomorphic-ws":39}],3:[function(require,module,exports){
 const defaults = require('./defaults');
 const SEPA = require('./sepa');
 const jsap = require('./jsap');
@@ -117,7 +117,7 @@ module.exports = {
 
 },{"./defaults":4,"./jsap":5,"./sepa":7}],4:[function(require,module,exports){
 module.exports = Object.freeze({
-	"host": "mml.arces.unibo.it",
+	"host": "localhost",
 	"oauth": {
 		"enable": false,
 		"register": "https://localhost:8443/oauth/register",
@@ -320,7 +320,6 @@ module.exports = SPARQLbench;
 const axios = require('axios');
 const WebSocket = require('isomorphic-ws');
 const utils = require('./utils');
-const Observable = require('zen-observable');
 const Connection = require('./connection')
 const Subscription = require('./subscription')
 
@@ -329,40 +328,44 @@ class SEPA {
 
   constructor(parameters) {
     this.config = parameters
-    this.queryURI = utils.createURI('http', parameters.host, parameters.sparql11protocol.port, parameters.sparql11protocol.query.path)
-    this.updateURI = utils.createURI('http', parameters.host, parameters.sparql11protocol.port, parameters.sparql11protocol.update.path)
+    this.queryURI = utils.createURI(parameters.sparql11protocol.protocol, parameters.host, parameters.sparql11protocol.port, parameters.sparql11protocol.query.path)
+    this.updateURI = utils.createURI(parameters.sparql11protocol.protocol, parameters.host, parameters.sparql11protocol.port, parameters.sparql11protocol.update.path)
 
     this.connectionPool = new Map()
 
     let subprotcol = parameters.sparql11seprotocol.protocol
     let selectSubProtocol = parameters.sparql11seprotocol.availableProtocols[subprotcol]
-    this.subscribeURI = utils.createURI('ws', parameters.host, selectSubProtocol.port, selectSubProtocol.path)
+    this.subscribeURI = utils.createURI(subprotcol, parameters.host, selectSubProtocol.port, selectSubProtocol.path)
+
+    this._wsFactory = (uri) => {
+      return new WebSocket(uri)
+    } 
   }
 
   query(query,config) {
     let q_uri = this.queryURI
+    let axiosConfig = this.config
     if ( config !== undefined){
-      let temp = utils.mergeWithDefaults(this.config,config)
-      q_uri = utils.createURI('http', temp.host, temp.sparql11protocol.port, temp.sparql11protocol.query.path)
+      axiosConfig = mergeConfigurations(this.config,config)
+      q_uri = utils.createURI(axiosConfig.sparql11protocol.protocol, axiosConfig.host, axiosConfig.sparql11protocol.port, axiosConfig.sparql11protocol.query.path)
     }
-    console.log(q_uri);;
-    return axios.post(q_uri,query, {"headers" : {
-      "Content-Type":"application/sparql-query",
-    }}).then(function(response) {
+    
+    axiosConfig = setHeadersIfUndefined(axiosConfig, { "Content-Type": "application/sparql-update" })
+
+    return axios.post(q_uri,query, axiosConfig.options).then(function(response) {
        return response.data;
     })
   }
 
   update(update,config) {
     let up_uri = this.updateURI
-    if ( config !== undefined){
-      let temp = utils.mergeWithDefaults(this.config,config)
-      up_uri = utils.createURI('http', temp.host, temp.sparql11protocol.port, temp.sparql11protocol.update.path)
+    let axiosConfig = this.config
+    if (config !== undefined) {
+      axiosConfig = mergeConfigurations(this.config, config)
+      up_uri = utils.createURI(axiosConfig.sparql11protocol.protocol, axiosConfig.host, axiosConfig.sparql11protocol.port, axiosConfig.sparql11protocol.update.path)
     }
-
-    return axios.post(up_uri,update, {"headers" : {
-      "Content-Type":"application/sparql-update",
-    }}).then(function(response) {
+    axiosConfig = setHeadersIfUndefined(axiosConfig, { "Content-Type": "application/sparql-update" })
+    return axios.post(up_uri, update, axiosConfig.options).then(function(response) {
       return {"status" : response.status,
               "statusText" : response.statusText
       };
@@ -371,28 +374,60 @@ class SEPA {
 
   subscribe (query,config,alias) {
     let sub_uri = this.subscribeURI
+    let subConfig = this.config
     if ( config !== undefined){
-      let temp = utils.mergeWithDefaults(this.config,config)
-      let subprotcol = temp.sparql11seprotocol.protocol
-      let selectSubProtocol = temp.sparql11seprotocol.availableProtocols[subprotcol]
-      sub_uri = utils.createURI('ws', temp.host, selectSubProtocol.port, selectSubProtocol.path)
+      subConfig = mergeConfigurations(this.config,config)
+      let subprotcol = subConfig.sparql11seprotocol.protocol
+      let selectSubProtocol = subConfig.sparql11seprotocol.availableProtocols[subprotcol]
+      sub_uri = utils.createURI(subprotcol, subConfig.host, selectSubProtocol.port, selectSubProtocol.path)
     }
 
     let connection = this.connectionPool.get(sub_uri)
     
     if(!connection){
-      connection = new Connection(new WebSocket(sub_uri))
+      connection = new Connection(this._wsFactory(sub_uri))
       this.connectionPool.set(sub_uri,connection)
       connection.on("close",(()=>{this.connectionPool.delete(sub_uri)}).bind(this))
     }
-
-    return new Subscription(query,connection,alias)
+    let options = subConfig ? subConfig.options : {}
+    return new Subscription(query,connection,alias,options)
   }
+  
+}
+
+function setHeadersIfUndefined(config,headers) {
+  if(!config.options) config.options = {headers : {}}
+  if(!config.options.headers) config.options.headers = {}
+
+  Object.keys(headers).forEach((key) => {
+    if (!config.options.headers.hasOwnProperty(key)){
+      config.options.headers[key] = headers[key]
+    }  
+  })
+  return config
+}
+
+function mergeConfigurations(defaults,user){
+  let result
+  
+  if (user.options && user.options.httpsAgent) {
+    let agent = user.options.httpsAgent
+    delete user.options.httpsAgent
+    result = utils.mergeWithDefaults(defaults, user)
+    //ripristinate config
+    user.options.httpsAgent = agent
+    result.options.httpsAgent = agent
+
+  } else {
+    result = utils.mergeWithDefaults(defaults, user)
+  }
+
+  return result
 }
 
 module.exports = SEPA;
 
-},{"./connection":2,"./subscription":8,"./utils":9,"axios":10,"isomorphic-ws":38,"zen-observable":49}],8:[function(require,module,exports){
+},{"./connection":2,"./subscription":8,"./utils":9,"axios":10,"isomorphic-ws":39}],8:[function(require,module,exports){
 const EventEmitter = require("events").EventEmitter
 const partial = require("util").partial
 
@@ -407,7 +442,7 @@ const CONNECTERROR = "connection-error"
 
 class Subscription extends EventEmitter {
     
-    constructor(query,connection,alias){
+    constructor(query,connection,alias,options){
         super()
         this._connection = connection
         this._unsubscribed = false;
@@ -423,12 +458,7 @@ class Subscription extends EventEmitter {
                 this.setMaxListeners(0)
                 this._unsubscribed = true;
             } else if (notification.error) {
-                this.unsubscribe()
-                this._stream.close()
                 this.emit(ERROR, notification)
-                this.removeAllListeners()
-                this.setMaxListeners(0)
-                this._unsubscribed = true;
             } else {
                 notification = notification.notification
                 if(notification.sequence === 0){
@@ -439,19 +469,25 @@ class Subscription extends EventEmitter {
                 if (Object.keys(notification.removedResults).length)  this.emit(REMOVED, notification.removedResults)
             }
         })
-        
-        this._stream = connection.notificationStream( {
+        this.options = options ? options : {}
+        let data = {
             subscribe: {
                 sparql: query,
                 alias: this._alias
             }
-        })
+        }
+        
+        data.subscribe = Object.assign(data.subscribe,this.options)
+        this._stream = connection.notificationStream(data)
 
         this._stream.on("notification", handler.bind(this))
 
         this._stream.on("error", ((err) => {
             this._stream.close()
             this.emit(CONNECTERROR,err)
+            this.removeAllListeners()
+            this.setMaxListeners(0)
+            this._unsubscribed = true;
         }))
     }
 
@@ -467,11 +503,13 @@ class Subscription extends EventEmitter {
         if(this._unsubscribed){
             throw new Error("Subscription already unsubscribed")
         }
-        this._stream.send({ unsubscribe : { spuid : this._stream.spuid}})
+        let unsubMessage = { unsubscribe: { spuid: this._stream.spuid, alias: this.alias } }
+        Object.assign(unsubMessage.unsubscribe,this.options)
+        this._stream.send(unsubMessage)
     }
 
     kill(){
-        this._scream.close()
+        this._stream.close()
     }
 }
 
@@ -511,7 +549,7 @@ module.exports.mergeWithDefaults = function (defaults,obj) {
   return deepmerge( defaults, obj)
 }
 
-},{"deepmerge":35,"url":44,"util":48}],10:[function(require,module,exports){
+},{"deepmerge":35,"url":45,"util":48}],10:[function(require,module,exports){
 module.exports = require('./lib/axios');
 },{"./lib/axios":12}],11:[function(require,module,exports){
 (function (process){
@@ -697,7 +735,7 @@ module.exports = function xhrAdapter(config) {
 };
 
 }).call(this,require('_process'))
-},{"../core/createError":18,"./../core/settle":21,"./../helpers/btoa":25,"./../helpers/buildURL":26,"./../helpers/cookies":28,"./../helpers/isURLSameOrigin":30,"./../helpers/parseHeaders":32,"./../utils":34,"_process":39}],12:[function(require,module,exports){
+},{"../core/createError":18,"./../core/settle":21,"./../helpers/btoa":25,"./../helpers/buildURL":26,"./../helpers/cookies":28,"./../helpers/isURLSameOrigin":30,"./../helpers/parseHeaders":32,"./../utils":34,"_process":40}],12:[function(require,module,exports){
 'use strict';
 
 var utils = require('./utils');
@@ -1254,7 +1292,7 @@ utils.forEach(['post', 'put', 'patch'], function forEachMethodWithData(method) {
 module.exports = defaults;
 
 }).call(this,require('_process'))
-},{"./adapters/http":11,"./adapters/xhr":11,"./helpers/normalizeHeaderName":31,"./utils":34,"_process":39}],24:[function(require,module,exports){
+},{"./adapters/http":11,"./adapters/xhr":11,"./helpers/normalizeHeaderName":31,"./utils":34,"_process":40}],24:[function(require,module,exports){
 'use strict';
 
 module.exports = function bind(fn, thisArg) {
@@ -1933,7 +1971,7 @@ module.exports = {
   trim: trim
 };
 
-},{"./helpers/bind":24,"is-buffer":37}],35:[function(require,module,exports){
+},{"./helpers/bind":24,"is-buffer":38}],35:[function(require,module,exports){
 (function (global, factory) {
 	typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
 	typeof define === 'function' && define.amd ? define(factory) :
@@ -2463,24 +2501,28 @@ EventEmitter.prototype.removeAllListeners =
       return this;
     };
 
-EventEmitter.prototype.listeners = function listeners(type) {
-  var evlistener;
-  var ret;
-  var events = this._events;
+function _listeners(target, type, unwrap) {
+  var events = target._events;
 
   if (!events)
-    ret = [];
-  else {
-    evlistener = events[type];
-    if (!evlistener)
-      ret = [];
-    else if (typeof evlistener === 'function')
-      ret = [evlistener.listener || evlistener];
-    else
-      ret = unwrapListeners(evlistener);
-  }
+    return [];
 
-  return ret;
+  var evlistener = events[type];
+  if (!evlistener)
+    return [];
+
+  if (typeof evlistener === 'function')
+    return unwrap ? [evlistener.listener || evlistener] : [evlistener];
+
+  return unwrap ? unwrapListeners(evlistener) : arrayClone(evlistener, evlistener.length);
+}
+
+EventEmitter.prototype.listeners = function listeners(type) {
+  return _listeners(this, type, true);
+};
+
+EventEmitter.prototype.rawListeners = function rawListeners(type) {
+  return _listeners(this, type, false);
 };
 
 EventEmitter.listenerCount = function(emitter, type) {
@@ -2554,6 +2596,31 @@ function functionBindPolyfill(context) {
 }
 
 },{}],37:[function(require,module,exports){
+if (typeof Object.create === 'function') {
+  // implementation from standard node.js 'util' module
+  module.exports = function inherits(ctor, superCtor) {
+    ctor.super_ = superCtor
+    ctor.prototype = Object.create(superCtor.prototype, {
+      constructor: {
+        value: ctor,
+        enumerable: false,
+        writable: true,
+        configurable: true
+      }
+    });
+  };
+} else {
+  // old school shim for old browsers
+  module.exports = function inherits(ctor, superCtor) {
+    ctor.super_ = superCtor
+    var TempCtor = function () {}
+    TempCtor.prototype = superCtor.prototype
+    ctor.prototype = new TempCtor()
+    ctor.prototype.constructor = ctor
+  }
+}
+
+},{}],38:[function(require,module,exports){
 /*!
  * Determine if an object is a Buffer
  *
@@ -2576,11 +2643,11 @@ function isSlowBuffer (obj) {
   return typeof obj.readFloatLE === 'function' && typeof obj.slice === 'function' && isBuffer(obj.slice(0, 0))
 }
 
-},{}],38:[function(require,module,exports){
+},{}],39:[function(require,module,exports){
 (function (global){
 module.exports = global.WebSocket
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],39:[function(require,module,exports){
+},{}],40:[function(require,module,exports){
 // shim for using process in browser
 var process = module.exports = {};
 
@@ -2766,7 +2833,7 @@ process.chdir = function (dir) {
 };
 process.umask = function() { return 0; };
 
-},{}],40:[function(require,module,exports){
+},{}],41:[function(require,module,exports){
 (function (global){
 /*! https://mths.be/punycode v1.4.1 by @mathias */
 ;(function(root) {
@@ -3303,7 +3370,7 @@ process.umask = function() { return 0; };
 }(this));
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],41:[function(require,module,exports){
+},{}],42:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -3389,7 +3456,7 @@ var isArray = Array.isArray || function (xs) {
   return Object.prototype.toString.call(xs) === '[object Array]';
 };
 
-},{}],42:[function(require,module,exports){
+},{}],43:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -3476,13 +3543,13 @@ var objectKeys = Object.keys || function (obj) {
   return res;
 };
 
-},{}],43:[function(require,module,exports){
+},{}],44:[function(require,module,exports){
 'use strict';
 
 exports.decode = exports.parse = require('./decode');
 exports.encode = exports.stringify = require('./encode');
 
-},{"./decode":41,"./encode":42}],44:[function(require,module,exports){
+},{"./decode":42,"./encode":43}],45:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -4216,7 +4283,7 @@ Url.prototype.parseHost = function() {
   if (host) this.hostname = host;
 };
 
-},{"./util":45,"punycode":40,"querystring":43}],45:[function(require,module,exports){
+},{"./util":46,"punycode":41,"querystring":44}],46:[function(require,module,exports){
 'use strict';
 
 module.exports = {
@@ -4233,31 +4300,6 @@ module.exports = {
     return arg == null;
   }
 };
-
-},{}],46:[function(require,module,exports){
-if (typeof Object.create === 'function') {
-  // implementation from standard node.js 'util' module
-  module.exports = function inherits(ctor, superCtor) {
-    ctor.super_ = superCtor
-    ctor.prototype = Object.create(superCtor.prototype, {
-      constructor: {
-        value: ctor,
-        enumerable: false,
-        writable: true,
-        configurable: true
-      }
-    });
-  };
-} else {
-  // old school shim for old browsers
-  module.exports = function inherits(ctor, superCtor) {
-    ctor.super_ = superCtor
-    var TempCtor = function () {}
-    TempCtor.prototype = superCtor.prototype
-    ctor.prototype = new TempCtor()
-    ctor.prototype.constructor = ctor
-  }
-}
 
 },{}],47:[function(require,module,exports){
 module.exports = function isBuffer(arg) {
@@ -4856,553 +4898,5 @@ function hasOwnProperty(obj, prop) {
 }
 
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./support/isBuffer":47,"_process":39,"inherits":46}],49:[function(require,module,exports){
-module.exports = require('./lib/Observable.js').Observable;
-
-},{"./lib/Observable.js":50}],50:[function(require,module,exports){
-'use strict';
-
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-
-var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
-
-function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
-
-// === Symbol Support ===
-
-var hasSymbols = function () {
-  return typeof Symbol === 'function';
-};
-var hasSymbol = function (name) {
-  return hasSymbols() && Boolean(Symbol[name]);
-};
-var getSymbol = function (name) {
-  return hasSymbol(name) ? Symbol[name] : '@@' + name;
-};
-
-if (hasSymbols() && !hasSymbol('observable')) {
-  Symbol.observable = Symbol('observable');
-}
-
-// === Abstract Operations ===
-
-function getMethod(obj, key) {
-  var value = obj[key];
-
-  if (value == null) return undefined;
-
-  if (typeof value !== 'function') throw new TypeError(value + ' is not a function');
-
-  return value;
-}
-
-function getSpecies(obj) {
-  var ctor = obj.constructor;
-  if (ctor !== undefined) {
-    ctor = ctor[getSymbol('species')];
-    if (ctor === null) {
-      ctor = undefined;
-    }
-  }
-  return ctor !== undefined ? ctor : Observable;
-}
-
-function isObservable(x) {
-  return x instanceof Observable; // SPEC: Brand check
-}
-
-function hostReportError(e) {
-  if (hostReportError.log) {
-    hostReportError.log(e);
-  } else {
-    setTimeout(function () {
-      throw e;
-    });
-  }
-}
-
-function enqueue(fn) {
-  Promise.resolve().then(function () {
-    try {
-      fn();
-    } catch (e) {
-      hostReportError(e);
-    }
-  });
-}
-
-function cleanupSubscription(subscription) {
-  var cleanup = subscription._cleanup;
-  if (cleanup === undefined) return;
-
-  subscription._cleanup = undefined;
-
-  if (!cleanup) {
-    return;
-  }
-
-  try {
-    if (typeof cleanup === 'function') {
-      cleanup();
-    } else {
-      var unsubscribe = getMethod(cleanup, 'unsubscribe');
-      if (unsubscribe) {
-        unsubscribe.call(cleanup);
-      }
-    }
-  } catch (e) {
-    hostReportError(e);
-  }
-}
-
-function closeSubscription(subscription) {
-  subscription._observer = undefined;
-  subscription._queue = undefined;
-  subscription._state = 'closed';
-}
-
-function flushSubscription(subscription) {
-  var queue = subscription._queue;
-  subscription._queue = undefined;
-  subscription._state = 'ready';
-  for (var i = 0; i < queue.length; ++i) {
-    notifySubscription(subscription, queue[i].type, queue[i].value);
-    if (subscription._state === 'closed') break;
-  }
-}
-
-function notifySubscription(subscription, type, value) {
-  subscription._state = 'running';
-
-  var observer = subscription._observer;
-
-  try {
-    var m = getMethod(observer, type);
-    switch (type) {
-      case 'next':
-        if (m) m.call(observer, value);
-        break;
-      case 'error':
-        closeSubscription(subscription);
-        if (m) m.call(observer, value);else throw value;
-        break;
-      case 'complete':
-        closeSubscription(subscription);
-        if (m) m.call(observer);
-        break;
-    }
-  } catch (e) {
-    hostReportError(e);
-  }
-
-  if (subscription._state === 'closed') cleanupSubscription(subscription);else if (subscription._state === 'running') subscription._state = 'ready';
-}
-
-function onNotify(subscription, type, value) {
-  if (subscription._state === 'closed') return;
-
-  if (subscription._state === 'buffering') {
-    subscription._queue.push({ type: type, value: value });
-    return;
-  }
-
-  if (subscription._state !== 'ready') {
-    subscription._state = 'buffering';
-    subscription._queue = [{ type: type, value: value }];
-    enqueue(function () {
-      return flushSubscription(subscription);
-    });
-    return;
-  }
-
-  notifySubscription(subscription, type, value);
-}
-
-var Subscription = function () {
-  function Subscription(observer, subscriber) {
-    _classCallCheck(this, Subscription);
-
-    // ASSERT: observer is an object
-    // ASSERT: subscriber is callable
-
-    this._cleanup = undefined;
-    this._observer = observer;
-    this._queue = undefined;
-    this._state = 'initializing';
-
-    var subscriptionObserver = new SubscriptionObserver(this);
-
-    try {
-      this._cleanup = subscriber.call(undefined, subscriptionObserver);
-    } catch (e) {
-      subscriptionObserver.error(e);
-    }
-
-    if (this._state === 'initializing') this._state = 'ready';
-  }
-
-  _createClass(Subscription, [{
-    key: 'unsubscribe',
-    value: function unsubscribe() {
-      if (this._state !== 'closed') {
-        closeSubscription(this);
-        cleanupSubscription(this);
-      }
-    }
-  }, {
-    key: 'closed',
-    get: function () {
-      return this._state === 'closed';
-    }
-  }]);
-
-  return Subscription;
-}();
-
-var SubscriptionObserver = function () {
-  function SubscriptionObserver(subscription) {
-    _classCallCheck(this, SubscriptionObserver);
-
-    this._subscription = subscription;
-  }
-
-  _createClass(SubscriptionObserver, [{
-    key: 'next',
-    value: function next(value) {
-      onNotify(this._subscription, 'next', value);
-    }
-  }, {
-    key: 'error',
-    value: function error(value) {
-      onNotify(this._subscription, 'error', value);
-    }
-  }, {
-    key: 'complete',
-    value: function complete() {
-      onNotify(this._subscription, 'complete');
-    }
-  }, {
-    key: 'closed',
-    get: function () {
-      return this._subscription._state === 'closed';
-    }
-  }]);
-
-  return SubscriptionObserver;
-}();
-
-var Observable = exports.Observable = function () {
-  function Observable(subscriber) {
-    _classCallCheck(this, Observable);
-
-    if (!(this instanceof Observable)) throw new TypeError('Observable cannot be called as a function');
-
-    if (typeof subscriber !== 'function') throw new TypeError('Observable initializer must be a function');
-
-    this._subscriber = subscriber;
-  }
-
-  _createClass(Observable, [{
-    key: 'subscribe',
-    value: function subscribe(observer) {
-      if (typeof observer !== 'object' || observer === null) {
-        observer = {
-          next: observer,
-          error: arguments[1],
-          complete: arguments[2]
-        };
-      }
-      return new Subscription(observer, this._subscriber);
-    }
-  }, {
-    key: 'forEach',
-    value: function forEach(fn) {
-      var _this = this;
-
-      return new Promise(function (resolve, reject) {
-        if (typeof fn !== 'function') {
-          reject(new TypeError(fn + ' is not a function'));
-          return;
-        }
-
-        function done() {
-          subscription.unsubscribe();
-          resolve();
-        }
-
-        var subscription = _this.subscribe({
-          next: function (value) {
-            try {
-              fn(value, done);
-            } catch (e) {
-              reject(e);
-              subscription.unsubscribe();
-            }
-          },
-
-          error: reject,
-          complete: resolve
-        });
-      });
-    }
-  }, {
-    key: 'map',
-    value: function map(fn) {
-      var _this2 = this;
-
-      if (typeof fn !== 'function') throw new TypeError(fn + ' is not a function');
-
-      var C = getSpecies(this);
-
-      return new C(function (observer) {
-        return _this2.subscribe({
-          next: function (value) {
-            try {
-              value = fn(value);
-            } catch (e) {
-              return observer.error(e);
-            }
-            observer.next(value);
-          },
-          error: function (e) {
-            observer.error(e);
-          },
-          complete: function () {
-            observer.complete();
-          }
-        });
-      });
-    }
-  }, {
-    key: 'filter',
-    value: function filter(fn) {
-      var _this3 = this;
-
-      if (typeof fn !== 'function') throw new TypeError(fn + ' is not a function');
-
-      var C = getSpecies(this);
-
-      return new C(function (observer) {
-        return _this3.subscribe({
-          next: function (value) {
-            try {
-              if (!fn(value)) return;
-            } catch (e) {
-              return observer.error(e);
-            }
-            observer.next(value);
-          },
-          error: function (e) {
-            observer.error(e);
-          },
-          complete: function () {
-            observer.complete();
-          }
-        });
-      });
-    }
-  }, {
-    key: 'reduce',
-    value: function reduce(fn) {
-      var _this4 = this;
-
-      if (typeof fn !== 'function') throw new TypeError(fn + ' is not a function');
-
-      var C = getSpecies(this);
-      var hasSeed = arguments.length > 1;
-      var hasValue = false;
-      var seed = arguments[1];
-      var acc = seed;
-
-      return new C(function (observer) {
-        return _this4.subscribe({
-          next: function (value) {
-            var first = !hasValue;
-            hasValue = true;
-
-            if (!first || hasSeed) {
-              try {
-                acc = fn(acc, value);
-              } catch (e) {
-                return observer.error(e);
-              }
-            } else {
-              acc = value;
-            }
-          },
-          error: function (e) {
-            observer.error(e);
-          },
-          complete: function () {
-            if (!hasValue && !hasSeed) return observer.error(new TypeError('Cannot reduce an empty sequence'));
-
-            observer.next(acc);
-            observer.complete();
-          }
-        });
-      });
-    }
-  }, {
-    key: 'concat',
-    value: function concat() {
-      var _this5 = this;
-
-      for (var _len = arguments.length, sources = Array(_len), _key = 0; _key < _len; _key++) {
-        sources[_key] = arguments[_key];
-      }
-
-      var C = getSpecies(this);
-
-      return new C(function (observer) {
-        var subscription = void 0;
-
-        function startNext(next) {
-          subscription = next.subscribe({
-            next: function (v) {
-              observer.next(v);
-            },
-            error: function (e) {
-              observer.error(e);
-            },
-            complete: function () {
-              if (sources.length === 0) {
-                subscription = undefined;
-                observer.complete();
-              } else {
-                startNext(C.from(sources.shift()));
-              }
-            }
-          });
-        }
-
-        startNext(_this5);
-
-        return function () {
-          if (subscription) {
-            subscription = undefined;
-            subscription.unsubscribe();
-          }
-        };
-      });
-    }
-  }, {
-    key: getSymbol('observable'),
-    value: function () {
-      return this;
-    }
-  }], [{
-    key: 'from',
-    value: function from(x) {
-      var C = typeof this === 'function' ? this : Observable;
-
-      if (x == null) throw new TypeError(x + ' is not an object');
-
-      var method = getMethod(x, getSymbol('observable'));
-      if (method) {
-        var observable = method.call(x);
-
-        if (Object(observable) !== observable) throw new TypeError(observable + ' is not an object');
-
-        if (isObservable(observable) && observable.constructor === C) return observable;
-
-        return new C(function (observer) {
-          return observable.subscribe(observer);
-        });
-      }
-
-      if (hasSymbol('iterator')) {
-        method = getMethod(x, getSymbol('iterator'));
-        if (method) {
-          return new C(function (observer) {
-            enqueue(function () {
-              if (observer.closed) return;
-              var _iteratorNormalCompletion = true;
-              var _didIteratorError = false;
-              var _iteratorError = undefined;
-
-              try {
-                for (var _iterator = method.call(x)[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
-                  var item = _step.value;
-
-                  observer.next(item);
-                  if (observer.closed) return;
-                }
-              } catch (err) {
-                _didIteratorError = true;
-                _iteratorError = err;
-              } finally {
-                try {
-                  if (!_iteratorNormalCompletion && _iterator.return) {
-                    _iterator.return();
-                  }
-                } finally {
-                  if (_didIteratorError) {
-                    throw _iteratorError;
-                  }
-                }
-              }
-
-              observer.complete();
-            });
-          });
-        }
-      }
-
-      if (Array.isArray(x)) {
-        return new C(function (observer) {
-          enqueue(function () {
-            if (observer.closed) return;
-            for (var i = 0; i < x.length; ++i) {
-              observer.next(x[i]);
-              if (observer.closed) return;
-            }
-            observer.complete();
-          });
-        });
-      }
-
-      throw new TypeError(x + ' is not observable');
-    }
-  }, {
-    key: 'of',
-    value: function of() {
-      for (var _len2 = arguments.length, items = Array(_len2), _key2 = 0; _key2 < _len2; _key2++) {
-        items[_key2] = arguments[_key2];
-      }
-
-      var C = typeof this === 'function' ? this : Observable;
-
-      return new C(function (observer) {
-        enqueue(function () {
-          if (observer.closed) return;
-          for (var i = 0; i < items.length; ++i) {
-            observer.next(items[i]);
-            if (observer.closed) return;
-          }
-          observer.complete();
-        });
-      });
-    }
-  }, {
-    key: getSymbol('species'),
-    get: function () {
-      return this;
-    }
-  }]);
-
-  return Observable;
-}();
-
-if (hasSymbols()) {
-  Object.defineProperty(Observable, Symbol('extensions'), {
-    value: {
-      symbol: getSymbol('observable'),
-      hostReportError: hostReportError
-    },
-    configurabe: true
-  });
-}
-},{}]},{},[1])(1)
+},{"./support/isBuffer":47,"_process":40,"inherits":37}]},{},[1])(1)
 });
