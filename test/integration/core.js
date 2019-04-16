@@ -10,6 +10,9 @@ describe('Integration tests for api', function() {
         assert(true,"Ok")
       })
     });
+    it('test query',function () {
+      return sepa.query("select ?a where {<integration> <tests> ?a}LIMIT 1")
+    })
     it('test subscription', function(done) {
       let sub = sepa.subscribe("select ?a where {<integration> <tests> ?a}", { host: config_host })
       sub.on("subscribed", notification => {
