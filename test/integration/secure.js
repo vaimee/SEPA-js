@@ -12,6 +12,11 @@ describe('Core secure APIs integration tests', () => {
         })
     });
     
+    it('Should login',async () => {
+        await client.login()
+        assert.ok(client.webToken,"Web Token undefined")
+    })
+
     it('Should query', () => {
         return client.query("select * where{?a ?b ?c}")
     });
