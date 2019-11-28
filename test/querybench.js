@@ -123,4 +123,14 @@ describe('querybench', function() {
     })
     assert.equal("select * where{?a ?ab 10.}", query)
   });
+  it('it should just replace variables' , function () {
+    bench = new Bench({})
+    query = bench.sparql("select * where{?a ?ab ?c. ab:la <la> <lab>}", {
+      a : {
+        type: "uri",
+        value: "urn:epc:id:gid:0.1.0102030405060708090A0B0C"
+      }
+    })
+    assert.equal("select * where{<urn:epc:id:gid:0.1.0102030405060708090A0B0C> ?ab ?c. ab:la <la> <lab>}", query)
+  });
 })
