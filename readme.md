@@ -180,8 +180,24 @@ register("SEPATest",{ options : { httpsAgent : httpsAgent}}).then(sClient =>{
 
 ```
 
+### Query bench api
+Since v0.10.0 SEPAjs provides also apis to store query templates and substitutes variables. See the following example:
+```javascript
+const Bench = require('sepajs').bench
+
+bench = new Bench()
+query = bench.sparql("select * where{?a ?b ?c.}",{
+	a:{
+	   type: "uri",
+       value :"urn:epc:id:gid:0.1.0102030405060708090A0B0C"
+	}
+})
+// query : select * where{<urn:epc:id:gid:0.1.0102030405060708090A0B0C> ?b ?c}
+```
+for futher details check query bench unit tests [here](./tests/querybench.js).
+
 ### JSAP api
-**J**ons **S**parql **A**pplication **P**rofile. 
+**J**ons **S**parql **A**pplication **P**rofile. JASAP api leverage on Query Bench API to provide an application development model.
 
 #### Nodejs:
 ```javascript
