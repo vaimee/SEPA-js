@@ -1,4 +1,11 @@
-# SEPA-js 🚧🔥
+<div align="center">
+<br>
+  <a href="">
+    <img width="300px" src="./doc/logoJS.png">
+  </a>
+</div>
+
+
 [![Build Status](https://travis-ci.org/arces-wot/SEPA-js.svg?branch=master)](https://travis-ci.org/arces-wot/SEPA-js)
 [![SEPA 0.9.7](https://img.shields.io/badge/SEPA-0.9.7-blue.svg)](https://github.com/arces-wot/SEPA/releases/download/0.9.7/engine-0.9.7.jar)
 [![npm version](https://badge.fury.io/js/%40arces-wot%2Fsepa-js.svg)](https://badge.fury.io/js/%40arces-wot%2Fsepa-js)
