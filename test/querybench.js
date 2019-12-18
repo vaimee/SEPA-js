@@ -123,6 +123,16 @@ describe('querybench', function() {
     })
     assert.equal("select * where{?a ?ab 10.}", query)
   });
+  it('it should replace variable even if it is surrounded by paratesis' , function () {
+    bench = new Bench({})
+    query = bench.sparql("select * where{?a ?ab (?c).}", {
+      c : {
+        type: "literal",
+        value: 10
+      }
+    })
+    assert.equal("select * where{?a ?ab (10).}", query)
+  });
   it('it should replace variable even if it is followed by ; or , (colum or comma)' , function () {
     let bench = new Bench({})
     let comma = bench.sparql("select * where{?a ?ab ?c,}", {
