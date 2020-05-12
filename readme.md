@@ -122,23 +122,23 @@ sepa.query("select * where {?s ?p 'js'}", {host:"www.vaimee.com"})
 ### Security
 Core api supports secure connection with the endpoint. After obtaining `clientID` and `clientSecret` pair, a secure client can be instatieted with:
 ```javascript
-const SecSEPA = require('@arces-wot/sepa-js').secure
+const SecSEPA = require('@arces-wot/sepa-js').client.secure
 
 const secClient = new SecSEPA(clientID,clientSecret)
 ```
-If your SEPA instance supports the `register` primitive you can use the corrisponding fuctionalities in sepa-js.
+If your SEPA instance supports the `register` primitive you can use the corrisponding function in sepa-js.
 ```javascript
-const register = require('@arces-wot/sepa-js').secure.register
+const register = require('@arces-wot/sepa-js').client.secure.register
 
 register("SEPATest").then(sClient =>{
 	return sclient.query("select * where {?s ?p 'js'}")
 })
 ```  
 
-Secure client has the same APIs of the unsecure instance please refer to [Core API](#Core-API) for details.
+Secure client has the same interface of the unsecure one please refer to [Core API](#Core-API) for details.
 
 #### Certificate
-SEPA-js client ships with the default certificate published on SEPA repository, if you have a custome instance of SEPA engine you should
+SEPA-js client ships with the default certificate published on SEPA repository, if you have a custom instance of SEPA engine you should
 configure the SEPA certificate in your secure client as following:
 
 ```javascript
@@ -179,7 +179,7 @@ const secClient = new SecSEPA(clientID,clientSecret,{ options : {
 
 // Or using  register function
 
-const register = require('@arces-wot/sepa-js').secure.register
+const register = require('@arces-wot/sepa-js').client.secure.register
 
 register("SEPATest",{ options : { httpsAgent : httpsAgent}}).then(sClient =>{
 	return sclient.query("select * where {?s ?p 'js'}")
@@ -188,7 +188,7 @@ register("SEPATest",{ options : { httpsAgent : httpsAgent}}).then(sClient =>{
 ```
 
 ### Query bench api
-Since v0.10.0 SEPAjs provides also apis to store query templates and substitutes variables. See the following example:
+From v0.10.0 SEPAjs provides apis to store query templates and substitutes variables. See the following example:
 ```javascript
 const Bench = require('sepajs').bench
 
