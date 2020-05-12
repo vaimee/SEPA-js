@@ -9,7 +9,7 @@
     "url": "https://github.com/arces-wot/SEPA-js/"
   },
   "scripts": {
-    "build-web": "browserify index.js --standalone Sepajs -o ./web/sepa.js",
+    "build:web": "browserify --standalone Sepajs -o ./web/sepa.js lib/core.js",
     "test": "mocha",
     "integration-test": "mocha test/integration/*.js"
   },
