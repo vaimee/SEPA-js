@@ -203,6 +203,8 @@ query = bench.sparql("select * where{?a ?b ?c.}",{
 ```
 for futher details check query bench unit tests [here](./tests/querybench.js).
 
+**Note**: Inside broswers the bench api can be required with `const bench = new Sepajs.bench();` as for other Sepajs functionalities.
+
 ### JSAP api
 **J**ons **S**parql **A**pplication **P**rofile. JASAP api leverage on Query Bench API to provide an application development model.
 
