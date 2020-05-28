@@ -161,4 +161,83 @@ describe('querybench', function() {
     })
     assert.equal("select * where{<urn:epc:id:gid:0.1.0102030405060708090A0B0C> ?ab ?c. ab:la <la> <lab>}", query)
   });
-})
+
+  describe('values', () => {
+    it('should create a valid template',()=>{
+      bench = new Bench({})
+      const template = bench._createValueTemplate([{a:{
+        value: "test:hello",
+        type: "uri"
+      },b:{
+        value: "hello"
+      }}])
+      const values = bench._createValues(template)
+      assert.equal(values, "VALUES(?a ?b){(test:hello hello)}")
+    })
+    it('should handle a list of bindings', () => {
+      bench = new Bench({})
+      const template = bench._createValueTemplate([{
+        a: {
+          value: "test:hello",
+          type: "uri"
+        }, b: {
+          value: "hello"
+        }
+      },
+        {
+          a: {
+            value: "test:hello2",
+            type: "uri"
+          }, b: {
+            value: "hello2"
+          }
+        }
+    
+    ])
+    const values = bench._createValues(template)
+      assert.equal(values, "VALUES(?a ?b){(test:hello hello) (test:hello2 hello2)}")
+    })
+
+    it('should create a valid query', () => {
+      bench = new Bench({})
+      const template = bench.sparql("select * where{?a ?b ?c. ab:la <la> <lab>}", [{
+        a: {
+          value: "test:hello",
+          type: "uri"
+        }, b: {
+          value: "hello"
+        }
+      }])
+      assert.equal(template, "select * where{VALUES(?a ?b){(test:hello hello)}?a ?b ?c. ab:la <la> <lab>}")
+    })
+  });
+
+  it('should create a valid query with shortcut', () => {
+    bench = new Bench({})
+    const template = bench.sparql("select * where{?a ?b ?c. ab:la <la> <lab>}", {
+      a: {
+        value: ["test:hello","b:bla"],
+        type: "uri"
+      }, c: {
+        value: 10
+      }
+    })
+
+    assert.equal(template, "select * where{VALUES(?a){(test:hello) (b:bla)}?a ?b 10. ab:la <la> <lab>}")
+  })
+
+  it('should create a valid query with multiple shortcut', () => {
+    bench = new Bench({})
+    const template = bench.sparql("select * where{?a ?b ?c. ab:la <la> <lab>}", {
+      a: {
+        value: ["test:hello","b:bla"],
+        type: "uri"
+      }, b: {
+        value: [10,11]
+      }
+    })
+
+    assert.equal(template, "select * where{VALUES(?a ?b){(test:hello 10) (b:bla 11)}?a ?b ?c. ab:la <la> <lab>}")
+  })
+
+});
