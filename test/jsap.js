@@ -89,7 +89,7 @@ describe('Jsap', function() {
     })
   })
 
-  describe('#subscribe',function(){
+  describe('#subscribe&query',function(){
     let jsap
     beforeEach(function() {
       jsap = new Jsap(test_jsap)
@@ -116,6 +116,23 @@ describe('Jsap', function() {
       }
       jsap.subscribe("costumProtocol" )
     })
+
+    it('Should do a simple query', () => {
+      jsap.api.query = (query) => {
+        assert.equal(query, "PREFIX rdf:<http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX rdfs:<http://www.w3.org/1999/02/22-rdf-syntax-ns#> select * where{?a ?b ?c}")
+      }
+      jsap.query("simple")
+    });
+
+    it('Should do add a query function', () => {
+      assert.equal(typeof jsap.integration.query,"function") 
+    });
+    it('Should call a query function', () => {
+      jsap.api.query = (query) => {
+        assert.ok(true)
+      }
+      jsap.integration.query()
+    });
   })
 
   describe('producer',function(){
