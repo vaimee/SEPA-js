@@ -84,7 +84,15 @@ describe('querybench', function() {
     }})
     assert.equal("PREFIX test:<hello> PREFIX pippo:<world> select * where{<hello> ?b ?c}",query )
   });
-
+  it('it should ignore undefined variables', function () {
+    bench = new Bench()
+    query = bench.sparql("select * where{?a ?ab ?c}", {
+      a: {
+        value: undefined
+      }
+    })
+    assert.equal("select * where{?a ?ab ?c}", query)
+  });
   it('it should substitute only the binding name', function () {
     namespaces = {
       test: "hello",
