@@ -23,7 +23,7 @@
     "axios": "^0.21.1",
     "deepmerge": "^4.2.2",
     "isomorphic-ws": "^4.0.0",
-    "ws": "^6.0.0"
+    "ws": "^7.4.5"
   },
   "devDependencies": {
     "browserify": "^16.2.3",
