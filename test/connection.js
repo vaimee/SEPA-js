@@ -238,6 +238,27 @@ describe('Connection', function () {
         assert(!callback.called, "Callaback callled")
         assert(fakeWs.close.calledOnce, "Connection not closed")
         
+        assert(closeCallback.called,"close callback not called")
+
+    });
+
+    it('should reconnect if server closes the connection', async () => {
+        let reconnectCallback = sinon.fake()
+        let connectionLostCallback = sinon.fake()
+
+        connection.on("reconnect", reconnectCallback)
+        connection.on("connection-lost", connectionLostCallback )
+
+        let notStream = connection.notificationStream({
+            subscribe:
+            {
+                sparql: "fake",
+                alias: 'test'
+            }
+        })
+
+
+        // Pretend that server closed the connection
         fakeWs.emit("close")
 
         assert(connectionLostCallback.calledOnce, "Connection lost callback not called")
