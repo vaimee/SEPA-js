@@ -4,6 +4,8 @@ const WebSocket = require("ws")
 const Emitter = require('events').EventEmitter
 
 const sinon = require('sinon')
+const clock = sinon.useFakeTimers()
+
 
 describe('Connection', function () {
     let fakeWs
@@ -13,12 +15,15 @@ describe('Connection', function () {
         fakeWs = new Emitter()
         fakeWs.readyState = WebSocket.OPEN
         fakeWs.send = sinon.fake()
-        fakeWs.close = sinon.fake()
+        fakeWs.close = sinon.fake(() => {
+            fakeWs.emit('close')
+        })
+
         // broswer methods
         fakeWs.addEventListener = fakeWs.addListener
         fakeWs.removeEventListener = fakeWs.removeListener
 
-        connection = new Connection(fakeWs)
+        connection = new Connection("fakeuri",() => fakeWs)
         fakeWs.send.resetHistory()
         fakeWs.close.resetHistory()
     });
@@ -234,7 +239,11 @@ describe('Connection', function () {
         assert(fakeWs.close.calledOnce, "Connection not closed")
         
         fakeWs.emit("close")
-        assert(closeCallback.called,"close callaback not called")
+
+        assert(connectionLostCallback.calledOnce, "Connection lost callback not called")
+        await clock.tick(1000)
+
+        assert(reconnectCallback, "recconect callback not called")
 
     });
     
