@@ -1,6 +1,6 @@
 {
   "name": "@arces-wot/sepa-js",
-  "version": "0.13.0",
+  "version": "0.13.1",
   "description": "A js client library for Semantic Event Processing Architecture",
   "main": "index.js",
   "browser": "web/sepa.js",
