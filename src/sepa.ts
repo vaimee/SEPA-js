@@ -1,6 +1,6 @@
 import axios from 'axios';
 import WebSocket from 'isomorphic-ws';
-import defaults, { SEPAConfig } from './defaults';
+import { SEPAConfig } from './defaults';
 import Subscription from './subscription';
 const utils = require('./utils');
 const Connection = require('./connection')

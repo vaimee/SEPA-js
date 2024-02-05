@@ -1,9 +1,9 @@
 
 export type URIBinding = {type: "uri", value: string | string[] | null}
-export type LiteralBinding = {type: "literal", value: string | number | boolean | (string | number | boolean)[] | null}
+export type LiteralBinding = {type: "literal", value: string | number | boolean | (string | number | boolean)[] | null, lang?: string, datatype?: string}
 export type Binding = URIBinding | LiteralBinding
 type NoArrayBinding = (Omit<URIBinding, "value"> & { value: string }) | (Omit<LiteralBinding, "value"> & { value: string | number | boolean })
-export type Bindings = Record<string, Binding> | Array<Record<string, Binding>>
+export type ForcedBindings = Record<string, Binding> | Array<Record<string, Binding>>
 
 export default class SPARQLbench {
   private namespaces: Record<string, string>;
@@ -20,7 +20,7 @@ export default class SPARQLbench {
     delete this.namespaces[prefix]
   }
 
-  public sparql(template: string, bindings: Bindings){
+  public sparql(template: string, bindings: ForcedBindings){
     const prefixes = Object.keys(this.namespaces).map(k => {
       let pref = `PREFIX ${k}:<${this.namespaces[k]}>\n`
       return pref;
@@ -92,7 +92,7 @@ export default class SPARQLbench {
     }
   }
 
-  private _createValueTemplate(bindings: Exclude<Bindings, Record<string, Binding>>){
+  private _createValueTemplate(bindings: Exclude<ForcedBindings, Record<string, Binding>>){
     let vars = []
     let body = []
     vars = Object.keys(bindings[0]).map(key => "?"+key)

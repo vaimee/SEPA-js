@@ -1,10 +1,14 @@
-import defaults from './defaults';
+import defaults, { SEPAConfig } from './defaults';
 import SEPA from './sepa';
-import Bench, { Bindings } from './querybench';
+import Bench, { ForcedBindings } from './querybench';
 
-export type JSAPConfig = Partial<typeof defaults> & { namespaces?: Record<string, string>, extended?: Record<string, any>, updates?: Record<string, any>, queries?: Record<string, any> };
+type QueryOrUpdateDefinition = { sparql: string, forcedBindings?: ForcedBindings }
 
-function trasformBindings(bindings = {},forcedBindings={}) {
+export type JSAPConfig = SEPAConfig & { namespaces?: Record<string, string>, extended?: Record<string, any>, updates?: Record<string, QueryOrUpdateDefinition>, queries?: Record<string, QueryOrUpdateDefinition> };
+
+export type Bindings = Record<string, string | number | boolean | Array<string | number | boolean>>
+
+function trasformBindings(bindings: Bindings = {},forcedBindings: ForcedBindings={}) {
   let result = {}
   Object.keys(bindings).forEach(k => {
     result[k] = {
@@ -65,7 +69,7 @@ class Jsap {
     })
   }
 
-  public query(key: string, bindings: Bindings){
+  public query(key: string, bindings: Bindings = {}){
     let query = this.queries[key].sparql
     let binds = trasformBindings(bindings, this.queries[key].forcedBindings)
     let config = (({ host, sparql11seprotocol }) => (prune({ host, sparql11seprotocol })))(this.queries[key])
@@ -75,7 +79,7 @@ class Jsap {
     return this.#api.query(query, config)
   }
 
-  public subscribe(key: string,bindings: Bindings){
+  public subscribe(key: string,bindings: Bindings={}){
     let query = this.queries[key].sparql
     let binds = trasformBindings(bindings,this.queries[key].forcedBindings)
     let config = (({ host, sparql11seprotocol }) => (prune({ host, sparql11seprotocol })))(this.queries[key])
@@ -85,7 +89,7 @@ class Jsap {
     return this.#api.subscribe(query,config)
   }
 
-  public update(key: string,bindings: Bindings){
+  public update(key: string,bindings: Bindings = {}){
     let update = this.updates[key].sparql
     let binds  = trasformBindings(bindings,this.updates[key].forcedBindings)   
     let config = (({ host, sparql11protocol }) => (prune({ host, sparql11protocol })))(this.updates[key])
@@ -137,8 +141,9 @@ function prune(obj) {
   }
   return obj;
 }
+
 type Tail<T> = T extends (ignored: infer _, ...args: infer P) => infer ReturnType ? (...args:P) => ReturnType : never
-type DynamicJsap = new <T extends JSAPConfig>(attr: T) => Jsap & Record<keyof T["updates"], Tail<Jsap["update"]>> & Record<keyof T["queries"], (Tail<Jsap["subscribe"]> & Tail<{ query: Jsap["query"] }>)>;
+type DynamicJsap = new <T extends JSAPConfig>(attr: T) => Jsap & Record<keyof T["updates"], Tail<Jsap["update"]>> & Record<keyof T["queries"], (Tail<Jsap["subscribe"]> & { query: Tail<Jsap["query"]> })>;
 
 export default Jsap as DynamicJsap;
 
