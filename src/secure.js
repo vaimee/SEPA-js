@@ -1,4 +1,4 @@
-const SEPA = require("./sepa").default
+const SEPA = require("./sepa").default;
 const EventEmitter = require('events').EventEmitter
 const axios = require('axios')
 const WebSocket = require('isomorphic-ws');
