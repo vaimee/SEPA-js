@@ -1,4 +1,4 @@
-const EventEmitter = require("events").EventEmitter
+import { EventEmitter } from "events"
 const partial = require("util").partial
 
 // EVENTS
@@ -10,9 +10,15 @@ const ERROR        = "error"
 const UNSUBSCRIBED = "unsubscribed"
 const CONNECTERROR = "connection-error"
 
-class Subscription extends EventEmitter {
+export default class Subscription extends EventEmitter {
+    private _connection: any
+    private _unsubscribed: boolean
+    private _query: string
+    private _alias: string
+    private _stream: any
+    options: any
     
-    constructor(query,connection,alias,options){
+    constructor(query: string,connection,alias?: string,options?: any){
         super()
         this._connection = connection
         this._unsubscribed = false;
@@ -82,5 +88,3 @@ class Subscription extends EventEmitter {
         this._stream.close()
     }
 }
-
-module.exports = Subscription

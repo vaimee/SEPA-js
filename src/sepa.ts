@@ -1,14 +1,25 @@
-const axios = require('axios');
-const WebSocket = require('isomorphic-ws');
+import axios from 'axios';
+import WebSocket from 'isomorphic-ws';
+import defaults, { SEPAConfig } from './defaults';
+import Subscription from './subscription';
 const utils = require('./utils');
 const Connection = require('./connection')
-const Subscription = require('./subscription')
 
 
-class SEPA {
+export default class SEPA {
+  private _config: SEPAConfig;
+  private queryURI: string;
+  private updateURI: string;
+  private connectionPool: Map<string, WebSocket>;
+  private subscribeURI: string;
+  private _wsFactory: (uri: string) => WebSocket;
 
-  constructor(parameters) {
-    this.config = parameters
+  public get config() {
+    return this._config
+  }
+
+  constructor(parameters: SEPAConfig) {
+    this._config = parameters
     this.queryURI = utils.createURI(parameters.sparql11protocol.protocol, parameters.host, parameters.sparql11protocol.port, parameters.sparql11protocol.query.path)
     this.updateURI = utils.createURI(parameters.sparql11protocol.protocol, parameters.host, parameters.sparql11protocol.port, parameters.sparql11protocol.update.path)
 
@@ -23,12 +34,12 @@ class SEPA {
     } 
   }
 
-  query(query,config) {
+  public query(query: string, config: SEPAConfig) {
     let q_uri = this.queryURI
     // clone the configuration
-    let axiosConfig = mergeConfigurations({},this.config)
+    let axiosConfig = mergeConfigurations({},this._config)
     if ( config !== undefined){
-      axiosConfig = mergeConfigurations(this.config,config)
+      axiosConfig = mergeConfigurations(this._config,config)
       q_uri = utils.createURI(axiosConfig.sparql11protocol.protocol, axiosConfig.host, axiosConfig.sparql11protocol.port, axiosConfig.sparql11protocol.query.path)
     }
     
@@ -39,12 +50,12 @@ class SEPA {
     })
   }
 
-  update(update,config) {
+  public update(update: string, config: SEPAConfig) {
     let up_uri = this.updateURI
     // clone the configuration
-    let axiosConfig = mergeConfigurations({}, this.config)
+    let axiosConfig = mergeConfigurations({}, this._config)
     if (config !== undefined) {
-      axiosConfig = mergeConfigurations(this.config, config)
+      axiosConfig = mergeConfigurations(this._config, config)
       up_uri = utils.createURI(axiosConfig.sparql11protocol.protocol, axiosConfig.host, axiosConfig.sparql11protocol.port, axiosConfig.sparql11protocol.update.path)
     }
     axiosConfig = setHeadersIfUndefined(axiosConfig, { "Content-Type": "application/sparql-update" })
@@ -55,11 +66,11 @@ class SEPA {
     })
   }
 
-  subscribe (query,config,alias) {
+  public subscribe (query: string, config: SEPAConfig, alias?: string) {
     let sub_uri = this.subscribeURI
-    let subConfig = this.config
+    let subConfig = this._config
     if ( config !== undefined){
-      subConfig = mergeConfigurations(this.config,config)
+      subConfig = mergeConfigurations(this._config,config)
       // delete https agent if present
       subConfig.options && subConfig.options.httpsAgent && delete subConfig.options.httpsAgent
       
@@ -100,8 +111,6 @@ function setHeadersIfUndefined(localConfig,headers) {
   return config
 }
 
-function mergeConfigurations(defaults,user){
+function mergeConfigurations(defaults: SEPAConfig, user: SEPAConfig){
   return utils.mergeWithDefaults(defaults,user)
 }
-
-module.exports = SEPA;

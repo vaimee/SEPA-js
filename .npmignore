@@ -1,3 +1,7 @@
 test/
 .vscode/
 doc/
+src/
+node_modules/
+.travis.yml
+esbuild.mjs

@@ -1,6 +1,8 @@
-const SEPA = require('./sepa');
-const Bench = require('./querybench');
-const defaults = require('./defaults');
+import defaults from './defaults';
+import SEPA from './sepa';
+import Bench, { Bindings } from './querybench';
+
+export type JSAPConfig = Partial<typeof defaults> & { namespaces?: Record<string, string>, extended?: Record<string, any>, updates?: Record<string, any>, queries?: Record<string, any> };
 
 function trasformBindings(bindings = {},forcedBindings={}) {
   let result = {}
@@ -14,10 +16,21 @@ function trasformBindings(bindings = {},forcedBindings={}) {
   return result
 }
 
+
+
 class Jsap {
-  constructor(config = {}) {
+  namespaces: Record<string, string>;
+  extended: Record<string, any>;
+  updates: Record<string, any>;
+  queries: Record<string, any>;
+  
+  #api: SEPA;
+  #bench: Bench;
+
+  constructor(config: JSAPConfig | string  = {}) {
     if (typeof config === 'string') {
-      config = JSON.parse(config)
+      // TODO: validate the parsed JSON
+      config = JSON.parse(config) as JSAPConfig
     }
 
     let parameters = (({ host, sparql11protocol, sparql11seprotocol }) => (prune({ host, sparql11protocol, sparql11seprotocol })))(config)
@@ -30,8 +43,8 @@ class Jsap {
     this.updates    = config.updates    ? config.updates : {}
     this.queries    = config.queries    ? config.queries : {}
     
-    this.api   = new SEPA(parameters)
-    this.bench = new Bench(this.namespaces)
+    this.#api   = new SEPA(parameters)
+    this.#bench = new Bench(this.namespaces)
 
     Object.keys(this.updates).forEach(k =>{
       this[k] = binds => {
@@ -42,8 +55,8 @@ class Jsap {
       if(this[k]){
         delete(this[k])
       }else{
-      this[k] = (binds,handler) => {
-         return this.subscribe(k,binds,handler)
+      this[k] = (binds) => {
+         return this.subscribe(k,binds)
         }
       this[k].query = binds => {
           return this.query(k, binds)
@@ -51,45 +64,46 @@ class Jsap {
       }
     })
   }
-  query(key,bindings){
+
+  public query(key: string, bindings: Bindings){
     let query = this.queries[key].sparql
     let binds = trasformBindings(bindings, this.queries[key].forcedBindings)
     let config = (({ host, sparql11seprotocol }) => (prune({ host, sparql11seprotocol })))(this.queries[key])
 
-    query = this.bench.sparql(query, binds)
+    query = this.#bench.sparql(query, binds)
 
-    return this.api.query(query, config)
+    return this.#api.query(query, config)
   }
 
-  subscribe(key,bindings){
+  public subscribe(key: string,bindings: Bindings){
     let query = this.queries[key].sparql
     let binds = trasformBindings(bindings,this.queries[key].forcedBindings)
     let config = (({ host, sparql11seprotocol }) => (prune({ host, sparql11seprotocol })))(this.queries[key])
     
-    query = this.bench.sparql(query,binds)
+    query = this.#bench.sparql(query,binds)
     
-    return this.api.subscribe(query,config)
+    return this.#api.subscribe(query,config)
   }
 
-  update(key,bindings){
+  public update(key: string,bindings: Bindings){
     let update = this.updates[key].sparql
     let binds  = trasformBindings(bindings,this.updates[key].forcedBindings)   
     let config = (({ host, sparql11protocol }) => (prune({ host, sparql11protocol })))(this.updates[key])
 
-    update = this.bench.sparql(update,binds)
+    update = this.#bench.sparql(update,binds)
 
-    return this.api.update(update,config);
+    return this.#api.update(update,config);
   }
 
-  producer(key){
+  public producer(key: string){
     return binds => { this.update(key,binds)}
   }
 
-  consumer(key,handler){
-    return binds => { this.subscribe(key,binds,handler)}
+  public consumer(key: string){
+    return binds => { this.subscribe(key,binds)}
   }
 
-  get Producers(){
+  public get Producers(){
     let result = {}
     Object.keys(this.updates).forEach(k =>{
       result[k] = binds => {
@@ -99,7 +113,7 @@ class Jsap {
     return result;
   }
 
-  get Consumers(){
+  public get Consumers(){
     let result = {}
     Object.keys(this.queries).forEach(k =>{
       result[k] = (binds) => { return this.subscribe(k,binds)}
@@ -123,4 +137,8 @@ function prune(obj) {
   }
   return obj;
 }
-module.exports = Jsap;
+type Tail<T> = T extends (ignored: infer _, ...args: infer P) => infer ReturnType ? (...args:P) => ReturnType : never
+type DynamicJsap = new <T extends JSAPConfig>(attr: T) => Jsap & Record<keyof T["updates"], Tail<Jsap["update"]>> & Record<keyof T["queries"], (Tail<Jsap["subscribe"]> & Tail<{ query: Jsap["query"] }>)>;
+
+export default Jsap as DynamicJsap;
+

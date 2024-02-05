@@ -1,10 +1,8 @@
-const SEPA = require("./sepa")
-const Subscription = require("./subscription") 
+const SEPA = require("./sepa").default
 const EventEmitter = require('events').EventEmitter
 const axios = require('axios')
-const https = require('https')
 const WebSocket = require('isomorphic-ws');
-const defaults = require('./defaults')
+const defaults = require('./defaults').default
 const merge = require("./utils").mergeWithDefaults
 
 class SecureSEPA extends SEPA {

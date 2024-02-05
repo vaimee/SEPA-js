@@ -2,14 +2,15 @@
   "name": "@arces-wot/sepa-js",
   "version": "0.13.1",
   "description": "A js client library for Semantic Event Processing Architecture",
-  "main": "index.js",
+  "main": "build/core.js",
   "browser": "web/sepa.js",
   "repository": {
     "type": "git",
     "url": "https://github.com/arces-wot/SEPA-js/"
   },
   "scripts": {
-    "build:web": "browserify --standalone Sepajs -o ./web/sepa.js lib/core.js",
+    "build": "tsc",
+    "build:web": "node esbuild.mjs",
     "test": "mocha",
     "integration-test": "mocha test/integration/*.js"
   },
@@ -22,12 +23,15 @@
   "dependencies": {
     "axios": "^0.21.1",
     "deepmerge": "^4.2.2",
-    "isomorphic-ws": "^4.0.0",
+    "isomorphic-ws": "^5.0.0",
     "ws": "^6.0.0"
   },
   "devDependencies": {
-    "browserify": "^16.2.3",
+    "@types/node": "^20.11.16",
+    "esbuild": "^0.20.0",
+    "esbuild-plugins-node-modules-polyfill": "^1.6.2",
     "mocha": "^7.1.2",
-    "sinon": "^7.2.2"
+    "sinon": "^7.2.2",
+    "typescript": "^5.3.3"
   }
 }
