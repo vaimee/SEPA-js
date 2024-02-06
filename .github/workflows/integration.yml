@@ -1,4 +1,4 @@
-name: Release workflow
+name: Integration workflow
 on:
   push:
     branches: ["main"]
