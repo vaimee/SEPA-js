@@ -1,6 +1,6 @@
 const assert = require('assert');
-const Jsap = require('../lib/jsap.js');
-const defaults = require('../lib/defaults');
+const Jsap = require('../build/jsap.js').default;
+const defaults = require('../build/defaults').default;
 const test_jsap = require("./jsapconfig")
 
 describe('Jsap', function() {
@@ -58,30 +58,32 @@ describe('Jsap', function() {
 
   describe('#update',function(){
     let jsap
+    const FakeApi = {
+    };
     beforeEach(function() {
-      jsap = new Jsap(test_jsap)
+      jsap = new Jsap(test_jsap, FakeApi)
     });
     it("Check simple update",function () {
-      jsap.api.update = (update) => {
+      FakeApi.update = (update) => {
         assert.equal(update,"PREFIX rdf:<http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX rdfs:<http://www.w3.org/1999/02/22-rdf-syntax-ns#> INSERT { <hello> <from> <js> }WHERE{}")
       }
       jsap.update("simple")
     })
     it("Check update with defaults",function () {
-      jsap.api.update = (update) => {
+      FakeApi.update = (update) => {
         assert.equal(update,"PREFIX rdf:<http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX rdfs:<http://www.w3.org/1999/02/22-rdf-syntax-ns#> INSERT {<hello> <from> 'Italy'}WHERE{}")
       }
       jsap.update("defaultArgs",{obj:"Italy"})
     })
 
 		it("Check update with defaults override",function () {
-      jsap.api.update = (update) => {
+      FakeApi.update = (update) => {
         assert.equal(update,"PREFIX rdf:<http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX rdfs:<http://www.w3.org/1999/02/22-rdf-syntax-ns#> INSERT {<Bye> <from> 'Italy'}WHERE{}")
       }
       jsap.update("defaultArgs",{obj:"Italy",sub:"Bye"})
     })
 		it("Check override configuration",function () {
-      jsap.api.update = (update,config) => {
+      FakeApi.update = (update,config) => {
         assert.equal(config.sparql11protocol.port,7000)
         assert.equal(config.sparql11protocol.update.format,"XML")
       }
@@ -91,26 +93,28 @@ describe('Jsap', function() {
 
   describe('#subscribe&query',function(){
     let jsap
+    const FakeApi = {
+    };
     beforeEach(function() {
-      jsap = new Jsap(test_jsap)
+      jsap = new Jsap(test_jsap, FakeApi)
     });
 
     it("Check simple subscribe",function () {
-			jsap.api.subscribe = (query) => {
+			FakeApi.subscribe = (query) => {
         assert.equal(query,"PREFIX rdf:<http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX rdfs:<http://www.w3.org/1999/02/22-rdf-syntax-ns#> select * where{?a ?b ?c}")
       }
       jsap.subscribe("simple")
     })
 
     it("Check subscribe with defaults",function () {
-      jsap.api.update = (update) => {
+      FakeApi.update = (update) => {
         assert.equal(update,"PREFIX rdf:<http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX rdfs:<http://www.w3.org/1999/02/22-rdf-syntax-ns#> INSERT {<hello> <from> 'Italy'}WHERE{}")
       }
       jsap.update("defaultArgs",{obj:"Italy"})
     })
 
     it("Check override configuration", function () {
-      jsap.api.subscribe = (query, config) => {
+      FakeApi.subscribe = (query, config) => {
         assert.equal(config.sparql11seprotocol.protocol, "wss")
         assert.equal(config.host, "other.host.it")
       }
@@ -118,7 +122,7 @@ describe('Jsap', function() {
     })
 
     it('Should do a simple query', () => {
-      jsap.api.query = (query) => {
+      FakeApi.query = (query) => {
         assert.equal(query, "PREFIX rdf:<http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX rdfs:<http://www.w3.org/1999/02/22-rdf-syntax-ns#> select * where{?a ?b ?c}")
       }
       jsap.query("simple")
@@ -128,7 +132,7 @@ describe('Jsap', function() {
       assert.equal(typeof jsap.integration.query,"function") 
     });
     it('Should call a query function', () => {
-      jsap.api.query = (query) => {
+      FakeApi.query = (query) => {
         assert.ok(true)
       }
       jsap.integration.query()
@@ -137,23 +141,24 @@ describe('Jsap', function() {
 
   describe('producer',function(){
     let jsap
+    const FakeApi = {}
     beforeEach(function() {
-      jsap = new Jsap(test_jsap)
+      jsap = new Jsap(test_jsap, FakeApi)
     });
     it("call a producer",function () {
-      jsap.api.update = (update) => {
+      FakeApi.update = (update) => {
         assert.equal(update,"PREFIX rdf:<http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX rdfs:<http://www.w3.org/1999/02/22-rdf-syntax-ns#> INSERT { <hello> <from> <js> }WHERE{}")
       }
       jsap.producer("simple")()
     })
     it("call a prducer with bindings",function () {
-      jsap.api.update = (update) => {
+      FakeApi.update = (update) => {
         assert.equal(update,"PREFIX rdf:<http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX rdfs:<http://www.w3.org/1999/02/22-rdf-syntax-ns#> INSERT {<hello> <from> 'Italy'}WHERE{}")
       }
       jsap.producer("defaultArgs")({obj:"Italy"})
     })
     it("call a prducer from producers ",function () {
-      jsap.api.update = (update) => {
+      FakeApi.update = (update) => {
         assert.equal(update,"PREFIX rdf:<http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX rdfs:<http://www.w3.org/1999/02/22-rdf-syntax-ns#> INSERT {<hello> <from> 'Italy'}WHERE{}")
       }
       jsap.Producers.defaultArgs({obj:"Italy"})
@@ -164,8 +169,8 @@ describe('Jsap', function() {
           baseUp : {sparql : "insert{<a> <b> ?obj}where{}"}
         }
       }
-      jsap = new Jsap(config)
-      jsap.api.update = (update) => {
+      jsap = new Jsap(config, FakeApi)
+      FakeApi.update = (update) => {
         assert.equal(update,"insert{<a> <b> 'Italy'}where{}")
       }
       jsap.baseUp({obj:"Italy"})
@@ -174,23 +179,24 @@ describe('Jsap', function() {
 
   describe('consumer',function(){
     let jsap
+    FakeApi = {}
     beforeEach(function() {
-      jsap = new Jsap(test_jsap)
+      jsap = new Jsap(test_jsap, FakeApi)
     });
     it("call a consumer",function () {
-      jsap.api.subscribe = (query) => {
+      FakeApi.subscribe = (query) => {
         assert.equal(query,"PREFIX rdf:<http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX rdfs:<http://www.w3.org/1999/02/22-rdf-syntax-ns#> select * where{?a ?b ?c}")
       }
       jsap.consumer("simple")()
     })
     it("call a consumer with bindings",function () {
-      jsap.api.subscribe = (query) => {
+      FakeApi.subscribe = (query) => {
         assert.equal(query,"PREFIX rdf:<http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX rdfs:<http://www.w3.org/1999/02/22-rdf-syntax-ns#> select * where{<Italy> ?b ?c}")
       }
       jsap.consumer("defaultArgs")({a:"Italy"})
     })
     it("call a consumer from Consumers ",function () {
-			jsap.api.subscribe = (query) => {
+			FakeApi.subscribe = (query) => {
         assert.equal(query,"PREFIX rdf:<http://www.w3.org/1999/02/22-rdf-syntax-ns#> PREFIX rdfs:<http://www.w3.org/1999/02/22-rdf-syntax-ns#> select * where{<Italy> ?b ?c}")
       }
       jsap.Consumers.defaultArgs({a:"Italy"})
@@ -202,7 +208,7 @@ describe('Jsap', function() {
         }
       }
       jsap = new Jsap(config)
-			jsap.api.subscribe = (query) => {
+			FakeApi.subscribe = (query) => {
         assert.equal(query,"select * where{?a ?b ?c}")
       }
       jsap.baseQ({obj:"Italy"})

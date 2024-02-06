@@ -31,7 +31,13 @@ class Jsap {
   #api: SEPA;
   #bench: Bench;
 
-  constructor(config: JSAPConfig | string  = {}) {
+  /**
+   * Create a JSAP interface to interact with other Agents in 
+   * your space. 
+   * @param config 
+   * @param client Override the default SEPA client.
+   */
+  constructor(config: JSAPConfig | string  = {}, client?: SEPA ) {
     if (typeof config === 'string') {
       // TODO: validate the parsed JSON
       config = JSON.parse(config) as JSAPConfig
@@ -47,7 +53,7 @@ class Jsap {
     this.updates    = config.updates    ? config.updates : {}
     this.queries    = config.queries    ? config.queries : {}
     
-    this.#api   = new SEPA(parameters)
+    this.#api   = client == null ? new SEPA(parameters) : client;
     this.#bench = new Bench(this.namespaces)
 
     Object.keys(this.updates).forEach(k =>{

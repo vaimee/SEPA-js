@@ -1,5 +1,5 @@
 const assert = require('assert');
-const utils = require('../lib/utils');
+const utils = require('../build/utils');
 
 describe('utils', function() {
   describe('createUri', () => {

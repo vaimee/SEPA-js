@@ -22,7 +22,7 @@ export default class SPARQLbench {
 
   public sparql(template: string, bindings: ForcedBindings){
     const prefixes = Object.keys(this.namespaces).map(k => {
-      let pref = `PREFIX ${k}:<${this.namespaces[k]}>\n`
+      let pref = `PREFIX ${k}:<${this.namespaces[k]}>`
       return pref;
     }).join(" ")
 

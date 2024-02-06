@@ -1,5 +1,5 @@
 const assert = require('assert');
-const Connection = require('../lib/connection');
+const Connection = require('../build/connection');
 const WebSocket = require("ws")
 const Emitter = require('events').EventEmitter
 

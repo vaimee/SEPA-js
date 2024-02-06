@@ -11,8 +11,9 @@
   "scripts": {
     "build": "tsc",
     "build:web": "node esbuild.mjs",
+    "pretest": "npm run build",
     "test": "mocha",
-    "integration-test": "mocha test/integration/*.js"
+    "test:integration": "npm run build && mocha test/integration/*.js"
   },
   "keywords": [
     "semantic",

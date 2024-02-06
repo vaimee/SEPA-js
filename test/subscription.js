@@ -1,5 +1,5 @@
 const assert = require('assert');
-const Subscription = require('../lib/subscription')
+const Subscription = require('../build/subscription').default
 const EventEmitter = require('events').EventEmitter
 const sinon = require('sinon')
 

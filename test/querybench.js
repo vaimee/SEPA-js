@@ -1,5 +1,5 @@
 const assert = require('assert');
-const Bench = require('../lib/querybench.js');
+const Bench = require('../build/querybench.js').default;
 
 describe('querybench', function() {
   it('test empty query', function() {

@@ -1,4 +1,4 @@
-const secure = require("../lib/secure")
+const secure = require("../build/secure")
 const assert = require("assert")
 
 describe('Secure initizalition unit tests', () => {
