@@ -2,35 +2,35 @@ import { AxiosRequestConfig } from 'axios';
 import * as https from 'https';
 const httpsAgent = https.globalAgent;
 
-export type SEPAConfig = Partial<{
-	"host": string,
-	"oauth": {
-		"enable": boolean,
-		"register": string,
-		"tokenRequest": string
+export type SEPAConfig = {
+	host?: string,
+	oauth?: {
+		enable?: boolean,
+		register?: string,
+		tokenRequest?: string
 	},
-	"sparql11protocol": {
-		"protocol": "http" | "https",
-		"port": number,
-		"query": {
-			"path": string,
-			"method": "POST" | "GET",
-			"format": "JSON"
+	sparql11protocol?: {
+		protocol?: "http" | "https",
+		port?: number,
+		query?: {
+			path?: string,
+			method?: "POST" | "GET" | "URL_ENCODED_POST",
+			format?: "JSON"
 		},
-		"update": {
-			"path": "/update",
-			"method": "POST" | "GET",
-			"format": "JSON"
+		update?: {
+			path?: "/update",
+			method?: "POST" | "GET" | "URL_ENCODED_POST",
+			format?: "JSON"
 		}
 	},
-	"sparql11seprotocol": {
-		"protocol": "ws" | "wss",
-		"availableProtocols": Record<"ws" | "wss", { port: number, path: string }>
+	sparql11seprotocol?: {
+		protocol?: "ws" | "wss",
+		availableProtocols?: Record<"ws" | "wss", { port?: number, path?: string }>
 	},
-	"options": AxiosRequestConfig
-}>; 
+	options?: AxiosRequestConfig
+}; 
 
-const defaults: SEPAConfig = {
+const defaults: Required<SEPAConfig> = {
 	"host": "localhost",
 	"oauth": {
 		"enable": false,
