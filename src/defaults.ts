@@ -18,7 +18,7 @@ export type SEPAConfig = {
 			format?: "JSON"
 		},
 		update?: {
-			path?: "/update",
+			path?: string,
 			method?: "POST" | "GET" | "URL_ENCODED_POST",
 			format?: "JSON"
 		}
