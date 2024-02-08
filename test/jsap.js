@@ -207,7 +207,7 @@ describe('Jsap', function() {
           baseQ : {sparql : "select * where{?a ?b ?c}"}
         }
       }
-      jsap = new Jsap(config)
+      jsap = new Jsap(config, FakeApi)
 			FakeApi.subscribe = (query) => {
         assert.equal(query,"select * where{?a ?b ?c}")
       }
