@@ -1,6 +1,6 @@
 {
   "name": "@vaimee/sepa-js",
-  "version": "0.14.4",
+  "version": "0.14.5",
   "description": "A js client library for Semantic Event Processing Architecture",
   "main": "build/core.js",
   "browser": "web/sepa.js",
